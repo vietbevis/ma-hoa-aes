@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kiểm tra AES — CSATBMTT — Học viện KTMM</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <nav class="nav">
+      <a class="nav-brand" href="../index.html">
+        <div class="nav-logo">AES</div>
+        <div>
+          <div class="nav-title">AES CIPHER</div>
+          <div class="nav-subtitle">// Cơ sở an toàn & bảo mật thông tin</div>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="../index.html">Trang chủ</a></li>
+        <li><a href="theory.html">Lý thuyết</a></li>
+        <li><a href="demo.html">Text Demo</a></li>
+        <li><a href="file-crypto.html">File &amp; Ảnh</a></li>
+        <li><a href="visualizer.html">Visualizer</a></li>
+        <li><a href="tests.html" class="active">Kiểm tra</a></li>
+        <li><a href="source.html">Mã nguồn</a></li>
+        <li><a href="about.html">Nhóm</a></li>
+      </ul>
+    </nav>
+
+    <div class="page-layout">
+      <aside class="sidebar">
+        <span class="sidebar-label">Bộ test</span>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="#nist" class="active"
+              ><span class="icon">🏛</span> NIST FIPS 197</a
+            >
+          </li>
+          <li>
+            <a href="#rfc"><span class="icon">📋</span> RFC 3602</a>
+          </li>
+          <li>
+            <a href="#roundtrip"><span class="icon">🔄</span> Round-trip</a>
+          </li>
+          <li>
+            <a href="#utils"><span class="icon">🔧</span> Utilities</a>
+          </li>
+          <li>
+            <a href="#security"><span class="icon">🛡</span> Security</a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="main">
+        <div class="page-header">
+          <div class="page-tag">Kiểm tra kết quả</div>
+          <h1 class="page-title">
+            Test Suite<br /><span>AES Verification</span>
+          </h1>
+          <p class="page-desc">
+            Kiểm tra toàn diện với vector chuẩn NIST, RFC và các trường hợp
+            biên.
+          </p>
+        </div>
+
+        <div class="alert alert-info">
+          ℹ️ Các test vector NIST FIPS 197 và RFC 3602 là các giá trị chuẩn quốc
+          tế. Nếu thuật toán tự cài đặt cho kết quả khớp, chứng tỏ cài đặt
+          <strong>hoàn toàn chính xác</strong>.
+        </div>
+
+        <!-- Summary -->
+        <div class="test-summary" id="test-summary" style="display: none">
+          <div class="test-sum-item">
+            <div class="test-sum-val" id="sum-total" style="color: var(--text)">
+              0
+            </div>
+            <div class="test-sum-lbl">TỔNG</div>
+          </div>
+          <div class="test-sum-item">
+            <div class="test-sum-val" id="sum-pass" style="color: var(--green)">
+              0
+            </div>
+            <div class="test-sum-lbl">ĐẠT</div>
+          </div>
+          <div class="test-sum-item">
+            <div class="test-sum-val" id="sum-fail" style="color: var(--red)">
+              0
+            </div>
+            <div class="test-sum-lbl">LỖI</div>
+          </div>
+          <div class="test-sum-item">
+            <div class="test-sum-val" id="sum-pct" style="color: var(--cyan)">
+              —
+            </div>
+            <div class="test-sum-lbl">% ĐẠT</div>
+          </div>
+        </div>
+
+        <div id="progress-wrap" style="display: none; margin-bottom: 16px">
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              id="progress-fill"
+              style="width: 0%"
+            ></div>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-bottom: 24px">
+          <button class="btn btn-primary" onclick="startTests()" id="run-btn">
+            ▶ Chạy tất cả tests
+          </button>
+          <button class="btn btn-ghost" onclick="clearResults()">
+            Xóa kết quả
+          </button>
+        </div>
+
+        <div id="test-results"></div>
+
+        <!-- Static descriptions of test groups -->
+        <div id="test-desc">
+          <div id="nist" class="card">
+            <div class="card-title">
+              🏛 NIST FIPS 197 — Official Test Vectors
+              <span class="badge">CHUẨN NIST</span>
+            </div>
+            <div class="theory-text">
+              <p>
+                Các vector kiểm tra chính thức từ tài liệu FIPS 197 (Phụ lục B
+                và C). Đây là tiêu chuẩn vàng để xác minh cài đặt AES.
+              </p>
+              <div class="code-block">
+                <span class="cmt">// FIPS 197 Appendix B — AES-128:</span>
+                Key:
+                <span class="num">000102030405060708090a0b0c0d0e0f</span> Input:
+                <span class="num">00112233445566778899aabbccddeeff</span>
+                Output:
+                <span class="num">69c4e0d86a7b04300d8a8ba1be31720e</span>
+
+                <span class="cmt">// FIPS 197 Appendix C — AES-256:</span>
+                Key:
+                <span class="num">000102030405060708090a0b0c0d0e0f...</span>
+                Input:
+                <span class="num">00112233445566778899aabbccddeeff</span>
+                Output:
+                <span class="num">8ea2b7ca516745bfeafc49904b496089</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="rfc" class="card">
+            <div class="card-title">
+              📋 RFC 3602 — AES-CBC Test Vectors
+              <span class="badge">CBC MODE</span>
+            </div>
+            <div class="theory-text">
+              <p>
+                Kiểm tra chế độ CBC với các vector từ RFC 3602 "The AES-CBC
+                Cipher Algorithm and Its Use with IPsec".
+              </p>
+              <div class="code-block">
+                <span class="cmt">// RFC 3602 Case 1 — AES-128-CBC:</span>
+                Key:
+                <span class="num">06a9214036b8a15b512e03d534120006</span> IV:
+                <span class="num">3dafba429d9eb430b422da802c9fac41</span> Plain:
+                <span class="str">"Single block msg"</span> Output:
+                <span class="num">e353779c1079aeb82708942dbe77181a</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="roundtrip" class="card">
+            <div class="card-title">
+              🔄 Round-trip Tests <span class="badge">TÍNH THUẬN NGHỊCH</span>
+            </div>
+            <div class="theory-text">
+              <p>
+                Kiểm tra tính thuận nghịch: mã hóa rồi giải mã phải cho lại kết
+                quả gốc chính xác. Bao gồm:
+              </p>
+              <ul
+                style="margin: 10px 0 0 20px; line-height: 2; font-size: 14px"
+              >
+                <li>Text ASCII ngắn</li>
+                <li>Text tiếng Việt (UTF-8 multi-byte)</li>
+                <li>Dữ liệu nhị phân 1024 bytes</li>
+                <li>AES-128, AES-192, AES-256</li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="utils" class="card">
+            <div class="card-title">
+              🔧 Utility Tests <span class="badge">CÁC HÀM HỖ TRỢ</span>
+            </div>
+            <div class="theory-text">
+              <p>
+                Kiểm tra Base64, Hex encoding, UTF-8 encode/decode, PKCS#7
+                padding — tất cả tự cài đặt.
+              </p>
+            </div>
+          </div>
+
+          <div id="security" class="card">
+            <div class="card-title">
+              🛡 Security Properties <span class="badge">TÍNH AN TOÀN</span>
+            </div>
+            <div class="theory-text">
+              <p>Kiểm tra tính chất bảo mật của AES:</p>
+              <ul
+                style="margin: 10px 0 0 20px; line-height: 2; font-size: 14px"
+              >
+                <li>
+                  <strong>Avalanche Effect:</strong> Thay đổi 1 bit khóa →
+                  ciphertext thay đổi &gt;40%
+                </li>
+                <li>
+                  <strong>Key Sensitivity:</strong> Sai khóa → không giải mã
+                  được
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <footer class="footer">
+      <span>© 2025 — Học viện Kỹ thuật Mật mã — Môn CSATBMTT</span>
+      <span>Test vectors: NIST FIPS 197, RFC 3602</span>
+    </footer>
+
+    <script src="../js/aes-core.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/aes-lib.js"></script>
+    <script src="../js/tests.js"></script>
+    <script>
+      let isRunning = false;
+
+      async function startTests() {
+        if (isRunning) return;
+        isRunning = true;
+
+        const btn = document.getElementById("run-btn");
+        btn.textContent = "⏳ Đang chạy...";
+        btn.disabled = true;
+
+        document.getElementById("test-summary").style.display = "flex";
+        document.getElementById("progress-wrap").style.display = "block";
+        document.getElementById("test-desc").style.display = "none";
+
+        const container = document.getElementById("test-results");
+        container.innerHTML = "";
+
+        // Run with slight delay for UI to update
+        await new Promise((r) => setTimeout(r, 50));
+
+        const { passed, failed, total, results } = TestSuite.runAllTests();
+
+        // Show results with animation
+        for (let i = 0; i < results.length; i++) {
+          const r = results[i];
+          const el = document.createElement("div");
+          el.className = `test-item ${r.ok ? "pass" : "fail"}`;
+          el.innerHTML = `
+        <span class="test-icon">${r.ok ? "✅" : "❌"}</span>
+        <span class="test-name">${r.name}</span>
+        <span class="test-status" style="color:${r.ok ? "var(--green)" : "var(--red)"}">
+          ${r.ok ? "PASS" : "FAIL"}
+        </span>
+        ${r.error ? `<span style="font-family:var(--font-mono);font-size:9px;color:var(--red);margin-left:8px">// ${r.error}</span>` : ""}
+      `;
+          container.appendChild(el);
+
+          // Update progress
+          const pct = Math.round(((i + 1) / total) * 100);
+          document.getElementById("progress-fill").style.width = pct + "%";
+          document.getElementById("sum-total").textContent = i + 1;
+          document.getElementById("sum-pass").textContent = results
+            .slice(0, i + 1)
+            .filter((r) => r.ok).length;
+          document.getElementById("sum-fail").textContent = results
+            .slice(0, i + 1)
+            .filter((r) => !r.ok).length;
+
+          await new Promise((r) => setTimeout(r, 30));
+        }
+
+        const pct = Math.round((passed / total) * 100);
+        document.getElementById("sum-total").textContent = total;
+        document.getElementById("sum-pass").textContent = passed;
+        document.getElementById("sum-fail").textContent = failed;
+        document.getElementById("sum-pct").textContent = pct + "%";
+        document.getElementById("progress-fill").style.background =
+          failed === 0 ? "var(--green)" : "var(--amber)";
+
+        btn.textContent = `▶ Chạy lại (${pct}% đạt)`;
+        btn.disabled = false;
+        isRunning = false;
+      }
+
+      function clearResults() {
+        document.getElementById("test-results").innerHTML = "";
+        document.getElementById("test-summary").style.display = "none";
+        document.getElementById("progress-wrap").style.display = "none";
+        document.getElementById("test-desc").style.display = "block";
+        document.getElementById("run-btn").textContent = "▶ Chạy tất cả tests";
+      }
+    </script>
+  </body>
+</html>

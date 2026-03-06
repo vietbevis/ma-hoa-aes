@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AES Visualizer — CSATBMTT — Học viện KTMM</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .viz-state {
+        display: inline-grid;
+        grid-template-columns: repeat(4, 46px);
+        gap: 3px;
+      }
+      .viz-cell {
+        height: 46px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text);
+        transition:
+          background 0.4s,
+          color 0.4s,
+          border-color 0.4s;
+      }
+      .viz-cell.sub {
+        background: rgba(0, 212, 255, 0.15);
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+      .viz-cell.shift {
+        background: rgba(0, 255, 157, 0.15);
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .viz-cell.mix {
+        background: rgba(255, 184, 48, 0.15);
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+      .viz-cell.ark {
+        background: rgba(155, 100, 255, 0.15);
+        border-color: #9b64ff;
+        color: #9b64ff;
+      }
+
+      .viz-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .viz-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        min-width: 230px;
+      }
+
+      .viz-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 10px;
+        color: var(--text-muted);
+        font-size: 22px;
+      }
+
+      .round-pipeline {
+        display: flex;
+        align-items: flex-start;
+        overflow-x: auto;
+        gap: 0;
+        padding-bottom: 12px;
+      }
+
+      .round-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 230px;
+        align-items: center;
+      }
+
+      .round-label-badge {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+
+      .round-label-badge.init {
+        background: rgba(0, 212, 255, 0.1);
+        color: var(--cyan);
+      }
+      .round-label-badge.mid {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--green);
+      }
+      .round-label-badge.fin {
+        background: rgba(155, 100, 255, 0.1);
+        color: #9b64ff;
+      }
+
+      .step-indicator {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      .step-pill {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 1px;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .step-pill.active {
+        background: rgba(0, 212, 255, 0.12);
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+
+      .transform-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <nav class="nav">
+      <a class="nav-brand" href="../index.html">
+        <div class="nav-logo">AES</div>
+        <div>
+          <div class="nav-title">AES CIPHER</div>
+          <div class="nav-subtitle">// Cơ sở an toàn & bảo mật thông tin</div>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="../index.html">Trang chủ</a></li>
+        <li><a href="theory.html">Lý thuyết</a></li>
+        <li><a href="demo.html">Text Demo</a></li>
+        <li><a href="file-crypto.html">File &amp; Ảnh</a></li>
+        <li><a href="visualizer.html" class="active">Visualizer</a></li>
+        <li><a href="tests.html">Kiểm tra</a></li>
+        <li><a href="source.html">Mã nguồn</a></li>
+        <li><a href="about.html">Nhóm</a></li>
+      </ul>
+    </nav>
+
+    <div class="page-layout">
+      <aside class="sidebar">
+        <span class="sidebar-label">Bước hiển thị</span>
+        <ul class="sidebar-nav" id="round-nav"></ul>
+      </aside>
+
+      <main class="main">
+        <div class="page-header">
+          <div class="page-tag">Trực quan hóa</div>
+          <h1 class="page-title">AES <span>Visualizer</span></h1>
+          <p class="page-desc">
+            Xem từng bước biến đổi của state 4×4 qua các vòng mã hóa AES.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            Nhập dữ liệu <span class="badge">INPUT</span>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <div class="field-label">Plaintext (16 ký tự ASCII)</div>
+              <input
+                type="text"
+                id="viz-plain"
+                value="Two One Nine Two"
+                maxlength="16"
+              />
+            </div>
+            <div class="field">
+              <div class="field-label">Key (16 ký tự)</div>
+              <input
+                type="text"
+                id="viz-key"
+                value="Thats my Kung Fu"
+                maxlength="16"
+              />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runViz()">
+              ▶ Trực quan hóa →
+            </button>
+          </div>
+        </div>
+
+        <div id="viz-output"></div>
+      </main>
+    </div>
+
+    <footer class="footer">
+      <span>© 2025 — Học viện Kỹ thuật Mật mã — Môn CSATBMTT</span>
+      <span>AES-128 Step-by-Step Visualization</span>
+    </footer>
+
+    <script src="../js/aes-core.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/aes-lib.js"></script>
+    <script>
+      function renderState(state, highlight) {
+        const el = document.createElement("div");
+        el.className = "viz-state";
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            const cell = document.createElement("div");
+            cell.className = "viz-cell " + highlight;
+            cell.textContent = state[r][c]
+              .toString(16)
+              .padStart(2, "0")
+              .toUpperCase();
+            el.appendChild(cell);
+          }
+        }
+        return el;
+      }
+
+      let currentTrace = [];
+
+      function runViz() {
+        const plainStr = document
+          .getElementById("viz-plain")
+          .value.padEnd(16, "\0")
+          .slice(0, 16);
+        const keyStr = document
+          .getElementById("viz-key")
+          .value.padEnd(16, "\0")
+          .slice(0, 16);
+        const block = Utils.strToBytes(plainStr);
+        const key = Utils.strToBytes(keyStr);
+
+        // Sử dụng AES.trace() từ thư viện — không cần duplicate code
+        currentTrace = AES.trace(block, key);
+
+        const nav = document.getElementById("round-nav");
+        nav.innerHTML = "";
+        currentTrace.forEach((step, i) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<a href="#step-${i}" onclick="highlightStep(${i})">
+        <span class="icon">◆</span> ${step.label}
+      </a>`;
+          nav.appendChild(li);
+        });
+
+        renderAllSteps();
+      }
+
+      function renderAllSteps() {
+        const out = document.getElementById("viz-output");
+        out.innerHTML = "";
+
+        const colorMap = {
+          none: "",
+          sub: '— <span style="color:var(--cyan)">SubBytes</span>',
+          shift: '— <span style="color:var(--green)">ShiftRows</span>',
+          mix: '— <span style="color:var(--amber)">MixColumns</span>',
+          ark: '— <span style="color:#9b64ff">AddRoundKey</span>',
+        };
+
+        currentTrace.forEach((step, i) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.id = `step-${i}`;
+          card.style.marginBottom = "14px";
+
+          const title = document.createElement("div");
+          title.className = "card-title";
+          title.innerHTML = `<span style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px">[${String(i).padStart(2, "0")}]</span> ${step.label} ${colorMap[step.highlight] || ""}`;
+          card.appendChild(title);
+
+          const stateEl = renderState(step.state, step.highlight);
+          card.appendChild(stateEl);
+
+          // Show flat hex
+          const flat = [];
+          for (let c = 0; c < 4; c++)
+            for (let r = 0; r < 4; r++) flat.push(step.state[r][c]);
+          const hexEl = document.createElement("div");
+          hexEl.style.cssText =
+            "font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:10px;letter-spacing:1px";
+          hexEl.textContent = flat
+            .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
+            .join(" ");
+          card.appendChild(hexEl);
+
+          out.appendChild(card);
+        });
+      }
+
+      function highlightStep(i) {
+        document
+          .querySelectorAll(".sidebar-nav a")
+          .forEach((a, j) => a.classList.toggle("active", j === i));
+      }
+
+      // Run default on load
+      window.addEventListener("load", runViz);
+    </script>
+  </body>
+</html>

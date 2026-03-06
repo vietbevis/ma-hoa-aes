@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AES Cipher — Cơ sở an toàn và bảo mật thông tin</title>
+    <meta
+      name="description"
+      content="Chương trình mã hóa và giải mã AES cài đặt từ đầu bằng JavaScript thuần, không dùng thư viện mã hóa."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <!-- NAV -->
+    <nav class="nav">
+      <a class="nav-brand" href="index.html">
+        <div class="nav-logo">AES</div>
+        <div>
+          <div class="nav-title">AES CIPHER</div>
+          <div class="nav-subtitle">// Cơ sở an toàn & bảo mật thông tin</div>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Trang chủ</a></li>
+        <li><a href="pages/theory.html">Lý thuyết</a></li>
+        <li><a href="pages/demo.html">Text Demo</a></li>
+        <li><a href="pages/file-crypto.html">File &amp; Ảnh</a></li>
+        <li><a href="pages/visualizer.html">Visualizer</a></li>
+        <li><a href="pages/tests.html">Kiểm tra</a></li>
+        <li><a href="pages/source.html">Mã nguồn</a></li>
+        <li><a href="pages/about.html">Nhóm</a></li>
+      </ul>
+    </nav>
+
+    <div class="app-wrapper">
+      <header class="app-header">
+        <div class="header-badge">
+          Đồ án môn học — Cơ sở an toàn và bảo mật thông tin
+        </div>
+        <h1 class="app-title">AES <em>CIPHER</em></h1>
+        <p class="app-subtitle">
+          // Advanced Encryption Standard — AES-128 / AES-192 / AES-256 — ECB /
+          CBC / CFB / OFB / CTR
+          <br />// JavaScript thuần · Không thư viện mã hóa · Cài đặt từ đầu
+        </p>
+      </header>
+
+      <div class="info-row">
+        <div class="info-card">
+          <div class="info-num">AES-128</div>
+          <div class="info-label">128-bit key · 10 rounds</div>
+        </div>
+        <div class="info-card">
+          <div class="info-num">AES-192</div>
+          <div class="info-label">192-bit key · 12 rounds</div>
+        </div>
+        <div class="info-card">
+          <div class="info-num">AES-256</div>
+          <div class="info-label">256-bit key · 14 rounds</div>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="enc">
+          🔒&nbsp; Mã hóa (Encrypt)
+        </button>
+        <button class="tab-btn" data-tab="dec">
+          🔓&nbsp; Giải mã (Decrypt)
+        </button>
+        <button class="tab-btn" data-tab="info">📖&nbsp; Thuật toán</button>
+      </div>
+
+      <!-- ENCRYPT -->
+      <div id="tab-enc" class="tab-panel active" role="tabpanel">
+        <div class="field">
+          <div class="field-label">
+            Chế độ mã hóa (Mode)
+            <span class="field-hint">// ECB / CBC / CFB / OFB / CTR</span>
+          </div>
+          <div class="key-size-row" id="panel-enc-mode">
+            <div class="key-opt" data-mode="ecb">ECB</div>
+            <div class="key-opt selected" data-mode="cbc">CBC</div>
+            <div class="key-opt" data-mode="cfb">CFB</div>
+            <div class="key-opt" data-mode="ofb">OFB</div>
+            <div class="key-opt" data-mode="ctr">CTR</div>
+          </div>
+          <div
+            class="field-hint"
+            id="enc-mode-warning"
+            style="
+              color: var(--amber);
+              display: none;
+              margin-top: 6px;
+              font-size: 11px;
+            "
+          >
+            ⚠️ ECB không an toàn: plaintext giống nhau → ciphertext giống nhau
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">
+            Kích thước khóa
+            <span class="field-hint" id="enc-key-hint"
+              >(16 ký tự / 128 bit)</span
+            >
+          </div>
+          <div class="key-size-row" id="panel-enc">
+            <div class="key-opt selected" data-bits="128">AES-128</div>
+            <div class="key-opt" data-bits="192">AES-192</div>
+            <div class="key-opt" data-bits="256">AES-256</div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">
+            Khóa bí mật (Secret Key)
+            <span class="field-hint">text hoặc hex</span>
+          </div>
+          <input
+            type="text"
+            id="enc-key"
+            placeholder="Nhập khóa bí mật... (tự động pad/truncate đúng độ dài)"
+          />
+        </div>
+        <div class="field" id="enc-iv-field">
+          <div class="field-label">
+            <span id="enc-iv-label">IV — Initialization Vector</span>
+            <span class="field-hint" id="enc-iv-hint"
+              >để trống → tự sinh ngẫu nhiên</span
+            >
+          </div>
+          <input
+            type="text"
+            id="enc-iv"
+            placeholder="16 ký tự / 32 ký tự hex — hoặc để trống để tạo tự động"
+          />
+        </div>
+        <div class="field">
+          <div class="field-label">Văn bản gốc (Plaintext)</div>
+          <textarea
+            id="enc-input"
+            placeholder="Nhập nội dung cần mã hóa... (hỗ trợ tiếng Việt Unicode)"
+          ></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-clear-enc">Xóa</button>
+          <button class="btn btn-primary" id="btn-encrypt">
+            Mã hóa &rarr;
+          </button>
+        </div>
+        <hr class="divider" />
+        <div class="output-grid">
+          <div class="output-item">
+            <div class="output-label">
+              Ciphertext (Base64)
+              <button class="copy-btn" data-copy="enc-out-cipher">COPY</button>
+            </div>
+            <div class="output-box empty" id="enc-out-cipher">
+              — kết quả sẽ hiển thị tại đây —
+            </div>
+          </div>
+          <div class="output-item" id="enc-out-iv-field">
+            <div class="output-label">
+              <span id="enc-out-iv-label"
+                >IV đã dùng (Base64) — lưu lại để giải mã</span
+              >
+              <button class="copy-btn" data-copy="enc-out-iv">COPY</button>
+            </div>
+            <div class="output-box empty" id="enc-out-iv">—</div>
+          </div>
+          <div class="output-item">
+            <div class="output-label">
+              Key thực tế (Hex)
+              <button class="copy-btn" data-copy="enc-out-key">COPY</button>
+            </div>
+            <div class="output-box empty" id="enc-out-key">—</div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top: 14px">
+          <button class="btn btn-ghost" id="btn-copy-to-dec">
+            Dùng kết quả này để giải mã &rarr;
+          </button>
+        </div>
+        <div class="status-bar" id="status-enc">
+          <div class="status-dot"></div>
+          <span>Sẵn sàng — Nhập khóa và văn bản rồi bấm Mã hóa</span>
+        </div>
+      </div>
+
+      <!-- DECRYPT -->
+      <div id="tab-dec" class="tab-panel" role="tabpanel">
+        <div class="field">
+          <div class="field-label">
+            Chế độ giải mã (Mode)
+            <span class="field-hint">// phải khớp với mode mã hóa</span>
+          </div>
+          <div class="key-size-row" id="panel-dec-mode">
+            <div class="key-opt" data-mode="ecb">ECB</div>
+            <div class="key-opt selected" data-mode="cbc">CBC</div>
+            <div class="key-opt" data-mode="cfb">CFB</div>
+            <div class="key-opt" data-mode="ofb">OFB</div>
+            <div class="key-opt" data-mode="ctr">CTR</div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Kích thước khóa</div>
+          <div class="key-size-row" id="panel-dec">
+            <div class="key-opt selected" data-bits="128">AES-128</div>
+            <div class="key-opt" data-bits="192">AES-192</div>
+            <div class="key-opt" data-bits="256">AES-256</div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Khóa bí mật (Secret Key)</div>
+          <input
+            type="text"
+            id="dec-key"
+            placeholder="Nhập đúng khóa đã dùng khi mã hóa..."
+          />
+        </div>
+        <div class="field" id="dec-iv-field">
+          <div class="field-label">
+            <span id="dec-iv-label">IV — Initialization Vector</span>
+            <span class="field-hint" id="dec-iv-hint"
+              >Base64 từ bước mã hóa</span
+            >
+          </div>
+          <input
+            type="text"
+            id="dec-iv"
+            placeholder="Dán IV (Base64) từ bước mã hóa vào đây..."
+          />
+        </div>
+        <div class="field">
+          <div class="field-label">Ciphertext (Base64)</div>
+          <textarea
+            id="dec-input"
+            placeholder="Dán chuỗi mã hóa Base64 vào đây..."
+          ></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-clear-dec">Xóa</button>
+          <button class="btn btn-primary" id="btn-decrypt">
+            Giải mã &rarr;
+          </button>
+        </div>
+        <hr class="divider" />
+        <div class="output-label">
+          Kết quả giải mã (Plaintext)
+          <button class="copy-btn" data-copy="dec-output">COPY</button>
+        </div>
+        <div class="output-box empty" id="dec-output">
+          — kết quả giải mã sẽ hiển thị tại đây —
+        </div>
+        <div class="status-bar" id="status-dec">
+          <div class="status-dot"></div>
+          <span>Sẵn sàng — Nhập khóa, IV, ciphertext rồi bấm Giải mã</span>
+        </div>
+      </div>
+
+      <!-- ALGORITHM INFO -->
+      <div id="tab-info" class="tab-panel" role="tabpanel">
+        <p class="section-title">// Sơ đồ thuật toán AES-CBC</p>
+        <div class="algo-grid">
+          <div class="algo-card">
+            <p class="section-title" style="margin-bottom: 14px">
+              Mã hóa (Cipher)
+            </p>
+            <div class="flow-steps">
+              <div class="flow-step">
+                <span class="step-num">0</span
+                ><span class="step-name">KeyExpansion</span
+                ><span class="step-desc">Sinh Round Keys</span>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <span class="step-num">0</span
+                ><span class="step-name">AddRoundKey</span
+                ><span class="step-desc">XOR với Key[0]</span>
+              </div>
+              <div class="flow-arrow">↓ × (Nr−1) vòng</div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">SubBytes</span
+                ><span class="step-desc">Thay thế qua S-Box</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">ShiftRows</span
+                ><span class="step-desc">Dịch vòng hàng</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">MixColumns</span
+                ><span class="step-desc">Nhân ma trận GF(2⁸)</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">AddRoundKey</span
+                ><span class="step-desc">XOR Key[i]</span>
+              </div>
+              <div class="flow-arrow">↓ Vòng cuối Nr</div>
+              <div class="flow-step">
+                <span class="step-num">Nr</span
+                ><span class="step-name">SubBytes + ShiftRows</span
+                ><span class="step-desc">Không MixColumns</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">Nr</span
+                ><span class="step-name">AddRoundKey</span
+                ><span class="step-desc">Key[Nr]</span>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <span class="step-num">✓</span
+                ><span class="step-name" style="color: var(--green)"
+                  >Ciphertext</span
+                ><span class="step-desc"></span>
+              </div>
+            </div>
+          </div>
+          <div class="algo-card">
+            <p class="section-title" style="margin-bottom: 14px">
+              Giải mã (InvCipher)
+            </p>
+            <div class="flow-steps">
+              <div class="flow-step">
+                <span class="step-num">Nr</span
+                ><span class="step-name">AddRoundKey</span
+                ><span class="step-desc">XOR Key[Nr]</span>
+              </div>
+              <div class="flow-arrow">↓ × (Nr−1) vòng</div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">InvShiftRows</span
+                ><span class="step-desc">Dịch vòng ngược</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">InvSubBytes</span
+                ><span class="step-desc">Tra Inverse S-Box</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">AddRoundKey</span
+                ><span class="step-desc">XOR Key[i]</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">i</span
+                ><span class="step-name">InvMixColumns</span
+                ><span class="step-desc">Ma trận nghịch đảo</span>
+              </div>
+              <div class="flow-arrow">↓ Vòng đầu 0</div>
+              <div class="flow-step">
+                <span class="step-num">0</span
+                ><span class="step-name">InvShiftRows + InvSubBytes</span
+                ><span class="step-desc">Không InvMixColumns</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">0</span
+                ><span class="step-name">AddRoundKey</span
+                ><span class="step-desc">Key[0]</span>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <span class="step-num">✓</span
+                ><span class="step-name" style="color: var(--green)"
+                  >Plaintext</span
+                ><span class="step-desc"></span>
+              </div>
+            </div>
+          </div>
+          <div class="algo-card">
+            <p class="section-title" style="margin-bottom: 14px">
+              CBC Mode — Cipher Block Chaining
+            </p>
+            <div class="flow-steps">
+              <div class="flow-step">
+                <span class="step-num">1</span
+                ><span class="step-name">Chia thành blocks 16B</span
+                ><span class="step-desc">PKCS#7 padding</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">2</span
+                ><span class="step-name">P[i] ⊕ C[i-1]</span
+                ><span class="step-desc">C[-1] = IV</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">3</span
+                ><span class="step-name">AES_Encrypt block</span
+                ><span class="step-desc">Mỗi block 16 bytes</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">4</span
+                ><span class="step-name">C[i] → C[i-1]</span
+                ><span class="step-desc">Block chaining</span>
+              </div>
+            </div>
+            <div id="step-info"></div>
+          </div>
+          <div class="algo-card">
+            <p class="section-title" style="margin-bottom: 14px">
+              Key Expansion
+            </p>
+            <div class="flow-steps">
+              <div class="flow-step">
+                <span class="step-num">1</span
+                ><span class="step-name">Copy Nk words từ key</span
+                ><span class="step-desc">Nk = 4 / 6 / 8</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">2</span
+                ><span class="step-name">RotWord</span
+                ><span class="step-desc">Xoay trái 1 byte</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">3</span
+                ><span class="step-name">SubWord</span
+                ><span class="step-desc">Áp S-Box lên word</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">4</span
+                ><span class="step-name">XOR với RCON[i/Nk]</span
+                ><span class="step-desc">Round constant</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">5</span
+                ><span class="step-name">XOR với w[i-Nk]</span
+                ><span class="step-desc">Sinh word mới</span>
+              </div>
+              <div class="flow-step">
+                <span class="step-num">✓</span
+                ><span class="step-name" style="color: var(--green)"
+                  >(Nr+1)×4 round keys</span
+                ><span class="step-desc">128-bit mỗi round</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="history-section">
+          <p class="section-title">// Lịch sử thao tác</p>
+          <div id="history-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUICK LINKS -->
+    <div class="app-wrapper" style="padding-top: 0">
+      <p
+        class="section-title"
+        style="
+          font-size: 11px;
+          font-family: var(--mono);
+          letter-spacing: 3px;
+          color: var(--dim);
+          text-transform: uppercase;
+          margin-bottom: 16px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid var(--border);
+        "
+      >
+        // Khám phá dự án
+      </p>
+      <div
+        class="info-row"
+        style="
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 14px;
+        "
+      >
+        <a
+          href="pages/theory.html"
+          class="info-card"
+          style="text-decoration: none; cursor: pointer"
+        >
+          <div class="info-num" style="font-size: 1.4rem">📐</div>
+          <div class="info-label">Lý thuyết AES</div>
+        </a>
+        <a
+          href="pages/demo.html"
+          class="info-card"
+          style="text-decoration: none; cursor: pointer"
+        >
+          <div class="info-num" style="font-size: 1.4rem">✏️</div>
+          <div class="info-label">Demo mã hóa Text</div>
+        </a>
+        <a
+          href="pages/file-crypto.html"
+          class="info-card"
+          style="text-decoration: none; cursor: pointer"
+        >
+          <div class="info-num" style="font-size: 1.4rem">📁</div>
+          <div class="info-label">Mã hóa File & Ảnh</div>
+        </a>
+        <a
+          href="pages/visualizer.html"
+          class="info-card"
+          style="text-decoration: none; cursor: pointer"
+        >
+          <div class="info-num" style="font-size: 1.4rem">🔬</div>
+          <div class="info-label">Visualizer</div>
+        </a>
+        <a
+          href="pages/tests.html"
+          class="info-card"
+          style="text-decoration: none; cursor: pointer"
+        >
+          <div class="info-num" style="font-size: 1.4rem">✅</div>
+          <div class="info-label">Kiểm tra (Test Suite)</div>
+        </a>
+        <a
+          href="pages/source.html"
+          class="info-card"
+          style="text-decoration: none; cursor: pointer"
+        >
+          <div class="info-num" style="font-size: 1.4rem">💻</div>
+          <div class="info-label">Xem mã nguồn</div>
+        </a>
+        <a
+          href="pages/about.html"
+          class="info-card"
+          style="text-decoration: none; cursor: pointer"
+        >
+          <div class="info-num" style="font-size: 1.4rem">👥</div>
+          <div class="info-label">Nhóm thực hiện</div>
+        </a>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>© 2025 — Học viện Kỹ thuật Mật mã — Môn CSATBMTT</span>
+      <span>AES-ECB / CBC / CFB / OFB / CTR — JavaScript thuần</span>
+    </footer>
+
+    <script src="js/aes-core.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/aes-lib.js"></script>
+    <script>
+      (function () {
+        // ── State
+        let encKeyBits = 128,
+          decKeyBits = 128;
+        let encMode = "cbc",
+          decMode = "cbc";
+        const roundsMap = { 128: 10, 192: 12, 256: 14 };
+        const keyHints = {
+          128: "(16 ký tự / 128 bit)",
+          192: "(24 ký tự / 192 bit)",
+          256: "(32 ký tự / 256 bit)",
+        };
+
+        // ── Key size selector helper
+        function setupKeySelector(panelId, callback) {
+          const panel = document.getElementById(panelId);
+          if (!panel) return;
+          panel.querySelectorAll(".key-opt").forEach((opt) => {
+            opt.addEventListener("click", () => {
+              panel
+                .querySelectorAll(".key-opt")
+                .forEach((o) => o.classList.remove("selected"));
+              opt.classList.add("selected");
+              callback(parseInt(opt.dataset.bits));
+            });
+          });
+        }
+        setupKeySelector("panel-enc", (bits) => {
+          encKeyBits = bits;
+          const hint = document.getElementById("enc-key-hint");
+          if (hint) hint.textContent = keyHints[bits];
+        });
+        setupKeySelector("panel-dec", (bits) => {
+          decKeyBits = bits;
+        });
+
+        // ── Mode selector helper
+        function setupModeSelector(panelId, callback) {
+          const panel = document.getElementById(panelId);
+          if (!panel) return;
+          panel.querySelectorAll(".key-opt").forEach((opt) => {
+            opt.addEventListener("click", () => {
+              panel
+                .querySelectorAll(".key-opt")
+                .forEach((o) => o.classList.remove("selected"));
+              opt.classList.add("selected");
+              callback(opt.dataset.mode);
+            });
+          });
+        }
+
+        function updateEncModeUI() {
+          const info = AES.modes[encMode];
+          // Warning
+          const warn = document.getElementById("enc-mode-warning");
+          warn.style.display = info.warning ? "block" : "none";
+          if (info.warning) warn.textContent = info.warning;
+          // IV field
+          const ivField = document.getElementById("enc-iv-field");
+          const ivLabel = document.getElementById("enc-iv-label");
+          const ivHint = document.getElementById("enc-iv-hint");
+          const ivInput = document.getElementById("enc-iv");
+          if (encMode === "ecb") {
+            ivField.style.display = "none";
+          } else if (encMode === "ctr") {
+            ivField.style.display = "";
+            ivLabel.textContent = "Nonce (8 bytes)";
+            ivHint.textContent = "để trống → tự sinh ngẫu nhiên";
+            ivInput.placeholder = "8 ký tự / 16 hex — hoặc để trống";
+          } else {
+            ivField.style.display = "";
+            ivLabel.textContent = "IV — Initialization Vector";
+            ivHint.textContent = "để trống → tự sinh ngẫu nhiên";
+            ivInput.placeholder =
+              "16 ký tự / 32 ký tự hex — hoặc để trống để tạo tự động";
+          }
+          // Output IV label
+          var outIvField = document.getElementById("enc-out-iv-field");
+          var outIvLabel = document.getElementById("enc-out-iv-label");
+          if (encMode === "ecb") {
+            outIvField.style.display = "none";
+          } else if (encMode === "ctr") {
+            outIvField.style.display = "";
+            outIvLabel.textContent =
+              "Nonce đã dùng (Base64) — lưu lại để giải mã";
+          } else {
+            outIvField.style.display = "";
+            outIvLabel.textContent = "IV đã dùng (Base64) — lưu lại để giải mã";
+          }
+        }
+
+        function updateDecModeUI() {
+          const ivField = document.getElementById("dec-iv-field");
+          const ivLabel = document.getElementById("dec-iv-label");
+          const ivHint = document.getElementById("dec-iv-hint");
+          const ivInput = document.getElementById("dec-iv");
+          if (decMode === "ecb") {
+            ivField.style.display = "none";
+          } else if (decMode === "ctr") {
+            ivField.style.display = "";
+            ivLabel.textContent = "Nonce (8 bytes)";
+            ivHint.textContent = "Base64 từ bước mã hóa";
+            ivInput.placeholder =
+              "Dán Nonce (Base64) từ bước mã hóa vào đây...";
+          } else {
+            ivField.style.display = "";
+            ivLabel.textContent = "IV — Initialization Vector";
+            ivHint.textContent = "Base64 từ bước mã hóa";
+            ivInput.placeholder = "Dán IV (Base64) từ bước mã hóa vào đây...";
+          }
+        }
+
+        setupModeSelector("panel-enc-mode", (mode) => {
+          encMode = mode;
+          updateEncModeUI();
+        });
+        setupModeSelector("panel-dec-mode", (mode) => {
+          decMode = mode;
+          updateDecModeUI();
+        });
+
+        // ── Tab switching
+        document.querySelectorAll(".tab-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            document
+              .querySelectorAll(".tab-btn")
+              .forEach((b) => b.classList.remove("active"));
+            document
+              .querySelectorAll(".tab-panel")
+              .forEach((p) => p.classList.remove("active"));
+            btn.classList.add("active");
+            const target = document.getElementById("tab-" + btn.dataset.tab);
+            if (target) target.classList.add("active");
+          });
+        });
+
+        // ── Copy buttons
+        document.querySelectorAll(".copy-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const target = document.getElementById(btn.dataset.copy);
+            if (!target) return;
+            const text = target.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+              btn.textContent = "COPIED!";
+              setTimeout(() => (btn.textContent = "COPY"), 1500);
+            });
+          });
+        });
+
+        // ── Status helpers
+        function setStatus(id, type, msg) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.className = "status-bar " + type;
+          el.innerHTML =
+            '<div class="status-dot"></div><span>' + msg + "</span>";
+        }
+        function setOutput(id, text) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.textContent = text;
+          el.classList.remove("empty");
+          el.classList.add("has-value");
+        }
+
+        // ── History
+        function addHistory(action, detail) {
+          const list = document.getElementById("history-list");
+          if (!list) return;
+          const row = document.createElement("div");
+          row.className = "hist-row";
+          row.innerHTML =
+            '<span class="hist-action">' +
+            action +
+            "</span>" +
+            '<span class="hist-detail">' +
+            detail +
+            "</span>" +
+            '<span class="hist-time">' +
+            new Date().toLocaleTimeString("vi-VN") +
+            "</span>";
+          list.insertBefore(row, list.firstChild);
+        }
+
+        // ── ENCRYPT
+        document.getElementById("btn-encrypt").addEventListener("click", () => {
+          const keyStr = document.getElementById("enc-key").value;
+          const ivStr = document.getElementById("enc-iv").value.trim();
+          const plain = document.getElementById("enc-input").value;
+
+          if (!keyStr) {
+            setStatus("status-enc", "error", "⚠ Vui lòng nhập khóa bí mật");
+            return;
+          }
+          if (!plain) {
+            setStatus("status-enc", "error", "⚠ Vui lòng nhập văn bản");
+            return;
+          }
+
+          setStatus("status-enc", "loading", "Đang mã hóa...");
+
+          try {
+            const keyBytes = Utils.prepareKey(keyStr, encKeyBits);
+            const plainBytes = Utils.strToBytes(plain);
+            let cipherBytes, ivOrNonce, ivLabel;
+
+            const t0 = performance.now();
+            if (encMode === "ecb") {
+              cipherBytes = AES.ecbEncrypt(plainBytes, keyBytes);
+              ivOrNonce = null;
+            } else if (encMode === "ctr") {
+              var nonce = ivStr
+                ? Utils.prepareKey(ivStr, 64)
+                : Utils.randomBytes(8);
+              cipherBytes = AES.ctrEncrypt(plainBytes, keyBytes, nonce);
+              ivOrNonce = nonce;
+              ivLabel = "Nonce";
+            } else {
+              // CBC, CFB, OFB — all use 16-byte IV
+              var iv = ivStr
+                ? Utils.prepareKey(ivStr, 128)
+                : Utils.randomBytes(16);
+              cipherBytes = AES.encrypt(plainBytes, keyBytes, {
+                mode: encMode,
+                iv: iv,
+              });
+              ivOrNonce = iv;
+              ivLabel = "IV";
+            }
+            const elapsed = (performance.now() - t0).toFixed(1);
+
+            setOutput("enc-out-cipher", Utils.toBase64(cipherBytes));
+            if (ivOrNonce) setOutput("enc-out-iv", Utils.toBase64(ivOrNonce));
+            setOutput("enc-out-key", Utils.toHex(keyBytes));
+
+            const modeUpper = encMode.toUpperCase();
+            const noPad =
+              encMode === "ctr" || encMode === "cfb" || encMode === "ofb";
+            const blocks = noPad
+              ? Math.ceil(plainBytes.length / 16)
+              : cipherBytes.length / 16;
+            setStatus(
+              "status-enc",
+              "ok",
+              "✓ Mã hóa thành công — AES-" +
+                encKeyBits +
+                "-" +
+                modeUpper +
+                " — " +
+                plainBytes.length +
+                "B → " +
+                cipherBytes.length +
+                "B (" +
+                blocks +
+                " blocks) — " +
+                elapsed +
+                "ms",
+            );
+
+            addHistory(
+              "ENCRYPT",
+              "AES-" +
+                encKeyBits +
+                "-" +
+                modeUpper +
+                " — " +
+                plainBytes.length +
+                "B → " +
+                cipherBytes.length +
+                "B",
+            );
+          } catch (e) {
+            setStatus("status-enc", "error", "⚠ Lỗi: " + e.message);
+          }
+        });
+
+        // ── DECRYPT
+        document.getElementById("btn-decrypt").addEventListener("click", () => {
+          const keyStr = document.getElementById("dec-key").value;
+          const ivB64 = document.getElementById("dec-iv").value.trim();
+          const cipherB64 = document.getElementById("dec-input").value.trim();
+
+          if (!keyStr) {
+            setStatus("status-dec", "error", "⚠ Vui lòng nhập khóa");
+            return;
+          }
+          if (decMode !== "ecb" && !ivB64) {
+            setStatus(
+              "status-dec",
+              "error",
+              "⚠ Vui lòng nhập " + (decMode === "ctr" ? "Nonce" : "IV"),
+            );
+            return;
+          }
+          if (!cipherB64) {
+            setStatus("status-dec", "error", "⚠ Vui lòng nhập chuỗi mã hóa");
+            return;
+          }
+
+          setStatus("status-dec", "loading", "Đang giải mã...");
+
+          try {
+            const keyBytes = Utils.prepareKey(keyStr, decKeyBits);
+            const cipherBytes = Utils.fromBase64(cipherB64);
+            let plainBytes;
+
+            const t0 = performance.now();
+            if (decMode === "ecb") {
+              plainBytes = AES.ecbDecrypt(cipherBytes, keyBytes);
+            } else if (decMode === "ctr") {
+              const nonce = Utils.fromBase64(ivB64);
+              plainBytes = AES.ctrDecrypt(cipherBytes, keyBytes, nonce);
+            } else {
+              // CBC, CFB, OFB — all use 16-byte IV
+              const ivBytes = Utils.fromBase64(ivB64);
+              plainBytes = AES.decrypt(cipherBytes, keyBytes, {
+                mode: decMode,
+                iv: ivBytes,
+              });
+            }
+            const elapsed = (performance.now() - t0).toFixed(1);
+
+            const plainText = Utils.bytesToStr(plainBytes);
+            setOutput("dec-output", plainText);
+
+            const modeUpper = decMode.toUpperCase();
+            setStatus(
+              "status-dec",
+              "ok",
+              "✓ Giải mã thành công — AES-" +
+                decKeyBits +
+                "-" +
+                modeUpper +
+                " — " +
+                cipherBytes.length +
+                "B → " +
+                plainBytes.length +
+                "B — " +
+                elapsed +
+                "ms",
+            );
+
+            addHistory(
+              "DECRYPT",
+              "AES-" +
+                decKeyBits +
+                "-" +
+                modeUpper +
+                " — " +
+                cipherBytes.length +
+                "B → " +
+                plainBytes.length +
+                "B",
+            );
+          } catch (e) {
+            setStatus(
+              "status-dec",
+              "error",
+              "⚠ Lỗi: " +
+                e.message +
+                " — Kiểm tra lại khóa, IV/Nonce hoặc ciphertext",
+            );
+          }
+        });
+
+        // ── Copy result to decrypt tab
+        document
+          .getElementById("btn-copy-to-dec")
+          .addEventListener("click", () => {
+            const cipher =
+              document.getElementById("enc-out-cipher").textContent;
+            const iv = document.getElementById("enc-out-iv").textContent;
+            const key = document.getElementById("enc-key").value;
+
+            if (cipher === "— kết quả sẽ hiển thị tại đây —") return;
+
+            document.getElementById("dec-input").value = cipher;
+            document.getElementById("dec-iv").value = iv;
+            document.getElementById("dec-key").value = key;
+
+            // Switch to decrypt tab
+            document
+              .querySelectorAll(".tab-btn")
+              .forEach((b) => b.classList.remove("active"));
+            document
+              .querySelectorAll(".tab-panel")
+              .forEach((p) => p.classList.remove("active"));
+            document.querySelector('[data-tab="dec"]').classList.add("active");
+            document.getElementById("tab-dec").classList.add("active");
+
+            // Sync key bits
+            document
+              .querySelectorAll("#panel-dec .key-opt")
+              .forEach((o) => o.classList.remove("selected"));
+            const match = document.querySelector(
+              '#panel-dec .key-opt[data-bits="' + encKeyBits + '"]',
+            );
+            if (match) match.classList.add("selected");
+            decKeyBits = encKeyBits;
+
+            // Sync mode
+            document
+              .querySelectorAll("#panel-dec-mode .key-opt")
+              .forEach((o) => o.classList.remove("selected"));
+            const modeMatch = document.querySelector(
+              '#panel-dec-mode .key-opt[data-mode="' + encMode + '"]',
+            );
+            if (modeMatch) modeMatch.classList.add("selected");
+            decMode = encMode;
+            updateDecModeUI();
+          });
+
+        // ── Clear buttons
+        document
+          .getElementById("btn-clear-enc")
+          .addEventListener("click", () => {
+            ["enc-key", "enc-iv", "enc-input"].forEach(
+              (id) => (document.getElementById(id).value = ""),
+            );
+            ["enc-out-cipher", "enc-out-iv", "enc-out-key"].forEach((id) => {
+              const el = document.getElementById(id);
+              el.textContent = "—";
+              el.classList.add("empty");
+              el.classList.remove("has-value");
+            });
+            setStatus(
+              "status-enc",
+              "",
+              "Sẵn sàng — Nhập khóa và văn bản rồi bấm Mã hóa",
+            );
+          });
+
+        document
+          .getElementById("btn-clear-dec")
+          .addEventListener("click", () => {
+            ["dec-key", "dec-iv", "dec-input"].forEach(
+              (id) => (document.getElementById(id).value = ""),
+            );
+            const el = document.getElementById("dec-output");
+            el.textContent = "— kết quả giải mã sẽ hiển thị tại đây —";
+            el.classList.add("empty");
+            el.classList.remove("has-value");
+            setStatus(
+              "status-dec",
+              "",
+              "Sẵn sàng — Nhập khóa, IV, ciphertext rồi bấm Giải mã",
+            );
+          });
+      })();
+    </script>
+  </body>
+</html>

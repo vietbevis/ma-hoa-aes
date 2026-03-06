@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nhóm thực hiện — CSATBMTT — Học viện KTMM</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .team-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .team-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 22px 18px;
+        text-align: center;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .team-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--cyan), var(--green));
+      }
+
+      .team-card:hover {
+        border-color: var(--border2);
+        transform: translateY(-2px);
+      }
+
+      .team-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(
+          135deg,
+          rgba(0, 212, 255, 0.2),
+          rgba(0, 255, 157, 0.2)
+        );
+        border: 2px solid var(--border2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin: 0 auto 12px;
+      }
+
+      .team-name {
+        font-family: var(--font-head);
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 3px;
+      }
+
+      .team-id {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-bottom: 8px;
+      }
+
+      .team-role {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: rgba(0, 212, 255, 0.1);
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        color: var(--cyan);
+      }
+
+      .task-list {
+        list-style: none;
+      }
+      .task-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13.5px;
+      }
+      .task-list li:last-child {
+        border-bottom: none;
+      }
+      .task-list li::before {
+        content: "▸";
+        color: var(--cyan);
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      .ref-list {
+        list-style: none;
+      }
+      .ref-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13.5px;
+        display: flex;
+        gap: 10px;
+      }
+      .ref-list li:last-child {
+        border-bottom: none;
+      }
+      .ref-num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--cyan);
+        flex-shrink: 0;
+        min-width: 28px;
+      }
+      .ref-info strong {
+        color: #fff;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .ref-info span {
+        font-size: 12px;
+        color: var(--text-dim);
+      }
+
+      .struct-tree {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 2;
+        color: var(--text);
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .struct-tree .dir {
+        color: var(--cyan);
+      }
+      .struct-tree .file {
+        color: var(--green);
+      }
+      .struct-tree .cmt {
+        color: var(--text-muted);
+      }
+
+      .milestone-list {
+        list-style: none;
+      }
+      .milestone-list li {
+        display: flex;
+        gap: 14px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .milestone-list li:last-child {
+        border-bottom: none;
+      }
+      .milestone-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--green);
+        flex-shrink: 0;
+        margin-top: 6px;
+        box-shadow: 0 0 8px var(--green);
+      }
+      .milestone-dot.amber {
+        background: var(--amber);
+        box-shadow: 0 0 8px var(--amber);
+      }
+      .milestone-dot.cyan {
+        background: var(--cyan);
+        box-shadow: 0 0 8px var(--cyan);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <nav class="nav">
+      <a class="nav-brand" href="../index.html">
+        <div class="nav-logo">AES</div>
+        <div>
+          <div class="nav-title">AES CIPHER</div>
+          <div class="nav-subtitle">// Cơ sở an toàn & bảo mật thông tin</div>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="../index.html">Trang chủ</a></li>
+        <li><a href="theory.html">Lý thuyết</a></li>
+        <li><a href="demo.html">Text Demo</a></li>
+        <li><a href="file-crypto.html">File &amp; Ảnh</a></li>
+        <li><a href="visualizer.html">Visualizer</a></li>
+        <li><a href="tests.html">Kiểm tra</a></li>
+        <li><a href="source.html">Mã nguồn</a></li>
+        <li><a href="about.html" class="active">Nhóm</a></li>
+      </ul>
+    </nav>
+
+    <div class="page-layout">
+      <aside class="sidebar">
+        <span class="sidebar-label">Nội dung</span>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="#team" class="active"
+              ><span class="icon">👥</span> Nhóm thực hiện</a
+            >
+          </li>
+          <li>
+            <a href="#tasks"><span class="icon">📋</span> Phân công</a>
+          </li>
+          <li>
+            <a href="#structure"><span class="icon">📁</span> Cấu trúc dự án</a>
+          </li>
+          <li>
+            <a href="#milestones"><span class="icon">🗓</span> Tiến độ</a>
+          </li>
+          <li>
+            <a href="#refs"><span class="icon">📚</span> Tài liệu tham khảo</a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="main">
+        <div class="page-header">
+          <div class="page-tag">Thông tin nhóm</div>
+          <h1 class="page-title">Nhóm <span>Thực hiện</span></h1>
+          <p class="page-desc">
+            Thông tin nhóm sinh viên, phân công nhiệm vụ và tài liệu tham khảo.
+          </p>
+        </div>
+
+        <!-- COURSE INFO -->
+        <div class="card" style="margin-bottom: 24px">
+          <div class="card-title">
+            Thông tin môn học <span class="badge">COURSE</span>
+          </div>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+              gap: 16px;
+            "
+          >
+            <div>
+              <div class="field-label">Tên môn học</div>
+              <div style="font-size: 14px; color: #fff">
+                Cơ sở an toàn và bảo mật thông tin
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Mã môn</div>
+              <div
+                style="
+                  font-family: var(--font-mono);
+                  font-size: 14px;
+                  color: var(--cyan);
+                "
+              >
+                CSATBMTT
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Giảng viên</div>
+              <div style="font-size: 14px; color: #fff">Nguyễn Đào Trường</div>
+            </div>
+            <div>
+              <div class="field-label">Trường</div>
+              <div style="font-size: 14px; color: #fff">
+                Học viện Kỹ thuật Mật mã
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Học kỳ</div>
+              <div style="font-size: 14px; color: #fff">
+                HK2 — Năm học 2025-2026
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Đề tài</div>
+              <div style="font-size: 14px; color: #fff">
+                Cài đặt AES bằng JavaScript thuần
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Ngôn ngữ</div>
+              <div
+                style="
+                  font-family: var(--font-mono);
+                  font-size: 14px;
+                  color: var(--green);
+                "
+              >
+                JavaScript (ES6+)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TEAM -->
+        <div id="team">
+          <div
+            class="section-title"
+            style="
+              font-family: var(--font-head);
+              font-size: 18px;
+              font-weight: 800;
+              color: #fff;
+              margin-bottom: 16px;
+              padding-bottom: 8px;
+              border-bottom: 1px solid var(--border);
+            "
+          >
+            👥 Thành viên nhóm
+          </div>
+          <div class="team-grid">
+            <div class="team-card">
+              <div class="team-avatar">👨‍💻</div>
+              <div class="team-name">Nguyễn Văn Việt</div>
+              <div class="team-id">MSSV: CT070262</div>
+              <span class="team-role">Thành viên</span>
+            </div>
+            <div class="team-card">
+              <div class="team-avatar">👨‍💻</div>
+              <div class="team-name">Trần Duy Quyến</div>
+              <div class="team-id">MSSV: CT070245</div>
+              <span class="team-role">Thành viên</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASKS -->
+        <div id="tasks" style="margin-top: 8px">
+          <div class="card">
+            <div class="card-title">
+              📋 Phân công nhiệm vụ <span class="badge">TASKS</span>
+            </div>
+            <ul class="task-list">
+              <li>
+                <div>
+                  <strong style="color: #fff">Nguyễn Văn Việt</strong> — Cài đặt
+                  lõi AES: GF(2⁸), Key Expansion, SubBytes, ShiftRows,
+                  MixColumns, AddRoundKey, các chế độ ECB / CBC / CFB / OFB /
+                  CTR
+                </div>
+              </li>
+              <li>
+                <div>
+                  <strong style="color: #fff">Trần Duy Quyến</strong> — Cài đặt
+                  utils (UTF-8, Base64, Hex, PKCS#7), giao diện HTML/CSS, trang
+                  demo, visualizer, bộ test suite, tài liệu lý thuyết
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- STRUCTURE -->
+        <div id="structure" style="margin-top: 8px">
+          <div class="card">
+            <div class="card-title">
+              📁 Cấu trúc thư mục dự án <span class="badge">FILE TREE</span>
+            </div>
+            <div class="struct-tree">
+              <span class="dir">aes-project/</span>
+              ├── <span class="file">index.html</span>          <span class="cmt">// Trang chủ &amp; giới thiệu</span>
+              ├── <span class="dir">css/</span>
+              │   └── <span class="file">style.css</span>      <span class="cmt">// Toàn bộ stylesheet chung</span>
+              ├── <span class="dir">js/</span>
+              │   ├── <span class="file">aes-core.js</span>    <span class="cmt">// Lõi AES: GF(2⁸), KeyExp, 4 phép biến đổi, CBC</span>
+              │   ├── <span class="file">aes-lib.js</span>     <span class="cmt">// Thư viện wrapper: ECB, CBC, CFB, OFB, CTR</span>
+              │   ├── <span class="file">utils.js</span>       <span class="cmt">// UTF-8, Base64, Hex, padding, random</span>
+              │   └── <span class="file">tests.js</span>       <span class="cmt">// Bộ test NIST/RFC/round-trip</span>
+              └── <span class="dir">pages/</span>
+                  ├── <span class="file">theory.html</span>    <span class="cmt">// Lý thuyết AES đầy đủ</span>
+                  ├── <span class="file">demo.html</span>      <span class="cmt">// Demo mã hóa/giải mã tương tác</span>
+                  ├── <span class="file">visualizer.html</span> <span class="cmt">// Trực quan hóa từng bước AES</span>
+                  ├── <span class="file">file-crypto.html</span> <span class="cmt">// Mã hóa/giải mã file</span>
+                  ├── <span class="file">tests.html</span>     <span class="cmt">// Chạy test suite</span>
+                  ├── <span class="file">source.html</span>    <span class="cmt">// Xem mã nguồn</span>
+                  └── <span class="file">about.html</span>     <span class="cmt">// Nhóm &amp; tài liệu</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MILESTONES -->
+        <div id="milestones" style="margin-top: 8px">
+          <div class="card">
+            <div class="card-title">
+              🗓 Tiến độ thực hiện <span class="badge">MILESTONES</span>
+            </div>
+            <ul class="milestone-list">
+              <li>
+                <div class="milestone-dot cyan"></div>
+                <div>
+                  <strong style="color: #fff">Tuần 1:</strong> Nghiên cứu lý
+                  thuyết AES, đọc NIST FIPS 197, phân công nhiệm vụ
+                </div>
+              </li>
+              <li>
+                <div class="milestone-dot cyan"></div>
+                <div>
+                  <strong style="color: #fff">Tuần 2:</strong> Cài đặt GF(2⁸),
+                  S-Box, Key Expansion — kiểm tra từng hàm đơn lẻ
+                </div>
+              </li>
+              <li>
+                <div class="milestone-dot cyan"></div>
+                <div>
+                  <strong style="color: #fff">Tuần 3:</strong> Cài đặt 4 phép
+                  biến đổi, mã hóa/giải mã 1 block, kiểm tra NIST
+                </div>
+              </li>
+              <li>
+                <div class="milestone-dot cyan"></div>
+                <div>
+                  <strong style="color: #fff">Tuần 4:</strong> CBC mode, PKCS#7,
+                  Base64/UTF-8, demo UI, test suite đầy đủ
+                </div>
+              </li>
+              <li>
+                <div class="milestone-dot amber"></div>
+                <div>
+                  <strong style="color: #fff">Tuần 5:</strong> Visualizer, trang
+                  lý thuyết, hoàn thiện giao diện, báo cáo
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- REFERENCES -->
+        <div id="refs" style="margin-top: 8px">
+          <div class="card">
+            <div class="card-title">
+              📚 Tài liệu tham khảo <span class="badge">REFERENCES</span>
+            </div>
+            <ul class="ref-list">
+              <li>
+                <span class="ref-num">[1]</span>
+                <div class="ref-info">
+                  <strong>NIST FIPS 197 — Advanced Encryption Standard</strong>
+                  <span
+                    >National Institute of Standards and Technology, 2001.
+                    https://doi.org/10.6028/NIST.FIPS.197</span
+                  >
+                </div>
+              </li>
+              <li>
+                <span class="ref-num">[2]</span>
+                <div class="ref-info">
+                  <strong
+                    >RFC 3602 — The AES-CBC Cipher Algorithm and Its Use with
+                    IPsec</strong
+                  >
+                  <span
+                    >S. Frankel, R. Glenn, S. Kelly. The Internet Society,
+                    2003.</span
+                  >
+                </div>
+              </li>
+              <li>
+                <span class="ref-num">[3]</span>
+                <div class="ref-info">
+                  <strong
+                    >The Design of Rijndael: AES — The Advanced Encryption
+                    Standard</strong
+                  >
+                  <span
+                    >Joan Daemen, Vincent Rijmen. Springer, 2002. ISBN
+                    978-3-540-42580-9</span
+                  >
+                </div>
+              </li>
+              <li>
+                <span class="ref-num">[4]</span>
+                <div class="ref-info">
+                  <strong
+                    >Cryptography and Network Security: Principles and Practice
+                    (8th ed.)</strong
+                  >
+                  <span
+                    >William Stallings. Pearson, 2022. Chapter 5: Advanced
+                    Encryption Standard.</span
+                  >
+                </div>
+              </li>
+              <li>
+                <span class="ref-num">[5]</span>
+                <div class="ref-info">
+                  <strong>Introduction to Modern Cryptography (3rd ed.)</strong>
+                  <span>Jonathan Katz, Yehuda Lindell. CRC Press, 2020.</span>
+                </div>
+              </li>
+              <li>
+                <span class="ref-num">[6]</span>
+                <div class="ref-info">
+                  <strong>AES Proposal: Rijndael (Version 2)</strong>
+                  <span
+                    >Joan Daemen, Vincent Rijmen. Submitted to NIST AES
+                    Competition, 1999.</span
+                  >
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <footer class="footer">
+      <span>© 2025 — Học viện Kỹ thuật Mật mã — Môn CSATBMTT</span>
+      <span>AES Implementation — JavaScript thuần</span>
+    </footer>
+
+    <script>
+      const headings = document.querySelectorAll("[id]");
+      const links = document.querySelectorAll(".sidebar-nav a");
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              links.forEach((l) => l.classList.remove("active"));
+              const link = document.querySelector(
+                `.sidebar-nav a[href="#${e.target.id}"]`,
+              );
+              if (link) link.classList.add("active");
+            }
+          });
+        },
+        { threshold: 0.5 },
+      );
+      headings.forEach((h) => observer.observe(h));
+    </script>
+  </body>
+</html>

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mã nguồn AES — CSATBMTT — Học viện KTMM</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .file-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+      .file-tab {
+        padding: 7px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 1px;
+        color: var(--text-dim);
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .file-tab.active {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: rgba(0, 212, 255, 0.07);
+      }
+      .file-tab:hover:not(.active) {
+        color: var(--text);
+      }
+
+      .source-viewer {
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+      }
+
+      .source-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 16px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+
+      .source-filename {
+        color: var(--cyan);
+        letter-spacing: 1px;
+      }
+      .source-lines {
+        color: var(--text-dim);
+      }
+
+      .source-body {
+        overflow: auto;
+        max-height: 600px;
+        padding: 16px 0;
+      }
+
+      .source-line {
+        display: flex;
+        gap: 0;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.8;
+      }
+      .source-line:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .line-num {
+        width: 48px;
+        flex-shrink: 0;
+        text-align: right;
+        padding-right: 16px;
+        color: var(--text-muted);
+        user-select: none;
+        font-size: 11px;
+      }
+
+      .line-code {
+        flex: 1;
+        padding-right: 24px;
+        white-space: pre;
+      }
+
+      .kw {
+        color: #569cd6;
+      }
+      .fn {
+        color: #dcdcaa;
+      }
+      .str {
+        color: #ce9178;
+      }
+      .cmt {
+        color: #6a9955;
+        font-style: italic;
+      }
+      .num {
+        color: #b5cea8;
+      }
+      .op {
+        color: #d4d4d4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <nav class="nav">
+      <a class="nav-brand" href="../index.html">
+        <div class="nav-logo">AES</div>
+        <div>
+          <div class="nav-title">AES CIPHER</div>
+          <div class="nav-subtitle">// Cơ sở an toàn & bảo mật thông tin</div>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="../index.html">Trang chủ</a></li>
+        <li><a href="theory.html">Lý thuyết</a></li>
+        <li><a href="demo.html">Text Demo</a></li>
+        <li><a href="file-crypto.html">File &amp; Ảnh</a></li>
+        <li><a href="visualizer.html">Visualizer</a></li>
+        <li><a href="tests.html">Kiểm tra</a></li>
+        <li><a href="source.html" class="active">Mã nguồn</a></li>
+        <li><a href="about.html">Nhóm</a></li>
+      </ul>
+    </nav>
+
+    <div class="page-layout">
+      <main class="main" style="max-width: 100%">
+        <div class="page-header">
+          <div class="page-tag">Mã nguồn</div>
+          <h1 class="page-title">
+            Source Code<br /><span>JavaScript thuần</span>
+          </h1>
+          <p class="page-desc">
+            Toàn bộ mã nguồn được chú thích đầy đủ — không dùng bất kỳ thư viện
+            mã hóa nào.
+          </p>
+        </div>
+
+        <div class="alert alert-info">
+          ℹ️ Tất cả mã nguồn được cài đặt thủ công từ đầu: GF(2⁸), S-Box, Key
+          Expansion, SubBytes, ShiftRows, MixColumns, AddRoundKey, ECB / CBC /
+          CFB / OFB / CTR mode, PKCS#7 padding, Base64, UTF-8.
+        </div>
+
+        <div class="file-tabs">
+          <div class="file-tab active" onclick="showFile('aes-core')">
+            📄 js/aes-core.js
+          </div>
+          <div class="file-tab" onclick="showFile('aes-lib')">
+            📄 js/aes-lib.js
+          </div>
+          <div class="file-tab" onclick="showFile('utils')">📄 js/utils.js</div>
+          <div class="file-tab" onclick="showFile('tests')">📄 js/tests.js</div>
+        </div>
+
+        <div id="source-container"></div>
+      </main>
+    </div>
+
+    <footer class="footer">
+      <span>© 2025 — Học viện Kỹ thuật Mật mã — Môn CSATBMTT</span>
+      <span>Pure JavaScript — No crypto libraries</span>
+    </footer>
+
+    <script>
+      const FILES = {
+        "aes-core": "../js/aes-core.js",
+        "aes-lib": "../js/aes-lib.js",
+        utils: "../js/utils.js",
+        tests: "../js/tests.js",
+      };
+
+      const FILE_LABELS = {
+        "aes-core": "js/aes-core.js",
+        "aes-lib": "js/aes-lib.js",
+        utils: "js/utils.js",
+        tests: "js/tests.js",
+      };
+
+      // Basic syntax highlighting
+      function highlight(code) {
+        return (
+          code
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            // Comments
+            .replace(/(\/\/[^\n]*)/g, '<span class="cmt">$1</span>')
+            .replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="cmt">$1</span>')
+            // Strings
+            .replace(/('(?:[^'\\]|\\.)*')/g, '<span class="str">$1</span>')
+            .replace(/("(?:[^"\\]|\\.)*")/g, '<span class="str">$1</span>')
+            .replace(/(`(?:[^`\\]|\\.)*`)/g, '<span class="str">$1</span>')
+            // Keywords
+            .replace(
+              /\b(function|const|let|var|for|if|else|return|new|this|while|break|throw|try|catch|class|import|export|default|of|in|true|false|null|undefined|typeof|instanceof)\b/g,
+              '<span class="kw">$1</span>',
+            )
+            // Numbers (hex and decimal)
+            .replace(/\b(0x[0-9a-fA-F]+|\d+)\b/g, '<span class="num">$1</span>')
+        );
+      }
+
+      async function showFile(name) {
+        document.querySelectorAll(".file-tab").forEach((t, i) => {
+          t.classList.toggle("active", Object.keys(FILES)[i] === name);
+        });
+
+        const container = document.getElementById("source-container");
+        container.innerHTML =
+          '<div style="padding:20px;color:var(--text-dim);font-family:var(--font-mono);font-size:12px">Đang tải...</div>';
+
+        try {
+          const resp = await fetch(FILES[name]);
+          const text = await resp.text();
+          const lines = text.split("\n");
+
+          const viewer = document.createElement("div");
+          viewer.className = "source-viewer";
+
+          viewer.innerHTML = `
+        <div class="source-header">
+          <span class="source-filename">${FILE_LABELS[name]}</span>
+          <span class="source-lines">${lines.length} dòng</span>
+        </div>
+        <div class="source-body" id="source-body"></div>
+      `;
+
+          container.innerHTML = "";
+          container.appendChild(viewer);
+
+          const body = viewer.querySelector("#source-body");
+          lines.forEach((line, i) => {
+            const lineEl = document.createElement("div");
+            lineEl.className = "source-line";
+            lineEl.innerHTML = `<span class="line-num">${i + 1}</span><span class="line-code">${highlight(line)}</span>`;
+            body.appendChild(lineEl);
+          });
+        } catch (e) {
+          container.innerHTML = `<div class="card"><div style="color:var(--red)">Lỗi tải file: ${e.message}</div></div>`;
+        }
+      }
+
+      showFile("aes-core");
+    </script>
+  </body>
+</html>

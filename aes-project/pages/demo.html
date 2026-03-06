@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo Mã hóa AES — CSATBMTT — Học viện KTMM</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      .tab-bar {
+        display: flex;
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        margin-bottom: 24px;
+      }
+      .tab-btn {
+        flex: 1;
+        padding: 13px;
+        background: var(--surface);
+        border: none;
+        color: var(--text-dim);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-right: 1px solid var(--border);
+      }
+      .tab-btn:last-child {
+        border-right: none;
+      }
+      .tab-btn.active {
+        color: var(--cyan);
+        background: rgba(0, 212, 255, 0.07);
+        border-bottom: 2px solid var(--cyan);
+      }
+      .tab-btn:hover:not(.active) {
+        color: var(--text);
+      }
+
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+        animation: fadeIn 0.25s ease;
+      }
+
+      .hex-dump {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        white-space: pre;
+        overflow-x: auto;
+        color: var(--text-dim);
+        max-height: 140px;
+        overflow-y: auto;
+      }
+
+      .side-info {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        margin-top: 14px;
+      }
+
+      .side-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+      .side-info-row:last-child {
+        border-bottom: none;
+      }
+      .side-info-row .k {
+        color: var(--text-dim);
+      }
+      .side-info-row .v {
+        color: var(--cyan);
+        font-weight: 500;
+      }
+      .side-info-row .v.ok {
+        color: var(--green);
+      }
+      .side-info-row .v.warn {
+        color: var(--amber);
+      }
+
+      .key-display {
+        display: flex;
+        gap: 3px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .key-byte {
+        width: 28px;
+        height: 28px;
+        background: rgba(0, 212, 255, 0.08);
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--cyan);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+
+    <!-- NAV -->
+    <nav class="nav">
+      <a class="nav-brand" href="../index.html">
+        <div class="nav-logo">AES</div>
+        <div>
+          <div class="nav-title">AES CIPHER</div>
+          <div class="nav-subtitle">// Cơ sở an toàn & bảo mật thông tin</div>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="../index.html">Trang chủ</a></li>
+        <li><a href="theory.html">Lý thuyết</a></li>
+        <li><a href="demo.html" class="active">Text Demo</a></li>
+        <li><a href="file-crypto.html">File &amp; Ảnh</a></li>
+        <li><a href="visualizer.html">Visualizer</a></li>
+        <li><a href="tests.html">Kiểm tra</a></li>
+        <li><a href="source.html">Mã nguồn</a></li>
+        <li><a href="about.html">Nhóm</a></li>
+      </ul>
+    </nav>
+
+    <div class="page-layout">
+      <aside class="sidebar">
+        <span class="sidebar-label">Chức năng</span>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="#" onclick="switchTab('enc')" class="active"
+              ><span class="icon">🔒</span> Mã hóa</a
+            >
+          </li>
+          <li>
+            <a href="#" onclick="switchTab('dec')"
+              ><span class="icon">🔓</span> Giải mã</a
+            >
+          </li>
+        </ul>
+        <span class="sidebar-label" style="margin-top: 16px">Thông tin</span>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="theory.html"><span class="icon">📐</span> Lý thuyết AES</a>
+          </li>
+          <li>
+            <a href="visualizer.html"
+              ><span class="icon">🔬</span> Visualizer</a
+            >
+          </li>
+          <li>
+            <a href="tests.html"><span class="icon">✅</span> Test suite</a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="main">
+        <div class="page-header">
+          <div class="page-tag">Demo tương tác</div>
+          <h1 class="page-title">
+            Mã hóa / Giải mã<br /><span>AES-ECB / CBC / CFB / OFB / CTR</span>
+          </h1>
+          <p class="page-desc">
+            Mã hóa và giải mã dữ liệu thực với AES-128/192/256 chế độ ECB, CBC,
+            CFB, OFB hoặc CTR. Toàn bộ tính toán thực hiện bằng JavaScript
+            thuần.
+          </p>
+        </div>
+
+        <!-- STATS -->
+        <div class="info-grid" style="grid-template-columns: repeat(4, 1fr)">
+          <div class="info-cell">
+            <span class="info-num" id="stat-keysize">128</span>
+            <span class="info-lbl">Key bits</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-num" id="stat-rounds">10</span>
+            <span class="info-lbl">Rounds</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-num" id="stat-blocks">—</span>
+            <span class="info-lbl">Blocks</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-num" id="stat-time">—</span>
+            <span class="info-lbl">ms</span>
+          </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="tab-bar">
+          <button
+            class="tab-btn active"
+            id="tab-enc-btn"
+            onclick="switchTab('enc')"
+          >
+            🔒 Mã hóa (Encrypt)
+          </button>
+          <button class="tab-btn" id="tab-dec-btn" onclick="switchTab('dec')">
+            🔓 Giải mã (Decrypt)
+          </button>
+        </div>
+
+        <!-- ENCRYPT TAB -->
+        <div id="tab-enc" class="tab-content active">
+          <div class="two-col">
+            <!-- LEFT: Inputs -->
+            <div>
+              <div class="card">
+                <div class="card-title">
+                  Cấu hình khóa <span class="badge">KEY SETUP</span>
+                </div>
+
+                <div class="field">
+                  <div class="field-label">
+                    Chế độ
+                    <span class="hint">// ECB / CBC / CFB / OFB / CTR</span>
+                  </div>
+                  <div class="key-selector">
+                    <div
+                      class="key-opt"
+                      id="enc-ecb"
+                      onclick="setEncMode('ecb')"
+                    >
+                      ECB
+                    </div>
+                    <div
+                      class="key-opt active"
+                      id="enc-cbc"
+                      onclick="setEncMode('cbc')"
+                    >
+                      CBC
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="enc-cfb"
+                      onclick="setEncMode('cfb')"
+                    >
+                      CFB
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="enc-ofb"
+                      onclick="setEncMode('ofb')"
+                    >
+                      OFB
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="enc-ctr"
+                      onclick="setEncMode('ctr')"
+                    >
+                      CTR
+                    </div>
+                  </div>
+                  <div
+                    id="enc-mode-warn"
+                    style="
+                      font-family: var(--font-mono);
+                      font-size: 10px;
+                      color: var(--amber);
+                      margin-top: 6px;
+                      display: none;
+                    "
+                  >
+                    ⚠️ ECB không an toàn: plaintext giống nhau → ciphertext
+                    giống nhau
+                  </div>
+                </div>
+
+                <div class="field">
+                  <div class="field-label">
+                    Kích thước khóa <span class="hint">// AES-128/192/256</span>
+                  </div>
+                  <div class="key-selector">
+                    <div
+                      class="key-opt active"
+                      id="enc-k128"
+                      onclick="setEncKeySize(128)"
+                    >
+                      AES-128<br /><span style="font-size: 9px">10 rounds</span>
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="enc-k192"
+                      onclick="setEncKeySize(192)"
+                    >
+                      AES-192<br /><span style="font-size: 9px">12 rounds</span>
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="enc-k256"
+                      onclick="setEncKeySize(256)"
+                    >
+                      AES-256<br /><span style="font-size: 9px">14 rounds</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <div class="field-label">Khóa bí mật (Secret Key)</div>
+                  <input
+                    type="text"
+                    id="enc-key"
+                    placeholder="Nhập khóa..."
+                    oninput="updateKeyDisplay()"
+                  />
+                  <div id="enc-key-bytes" class="key-display"></div>
+                  <div
+                    style="
+                      font-family: var(--font-mono);
+                      font-size: 10px;
+                      color: var(--text-dim);
+                      margin-top: 4px;
+                    "
+                    id="enc-key-info"
+                  >
+                    AES-128: cần 16 bytes (pad/cắt tự động)
+                  </div>
+                </div>
+
+                <div class="field" id="enc-iv-field">
+                  <div class="field-label">
+                    <span id="enc-iv-lbl">IV — Initialization Vector</span>
+                    <span class="hint" id="enc-iv-hint"
+                      >// để trống = ngẫu nhiên</span
+                    >
+                  </div>
+                  <input
+                    type="text"
+                    id="enc-iv"
+                    placeholder="16 ký tự hoặc để trống..."
+                  />
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">
+                  Văn bản gốc <span class="badge">PLAINTEXT</span>
+                </div>
+                <div class="field">
+                  <textarea
+                    id="enc-input"
+                    placeholder="Nhập văn bản cần mã hóa (hỗ trợ tiếng Việt)..."
+                    rows="5"
+                  ></textarea>
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-ghost" onclick="clearEnc()">
+                    Xóa
+                  </button>
+                  <button class="btn btn-primary" onclick="doEncrypt()">
+                    🔒 Mã hóa →
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT: Output -->
+            <div>
+              <div class="card">
+                <div class="card-title">
+                  Kết quả mã hóa <span class="badge">CIPHERTEXT</span>
+                </div>
+                <div class="field-label">Base64 Output</div>
+                <div class="output-box" id="enc-output">
+                  <span style="color: var(--text-dim)"
+                    >— kết quả sẽ hiển thị ở đây —</span
+                  >
+                </div>
+                <div class="field-label" style="margin-top: 14px">
+                  <span id="enc-iv-out-lbl"
+                    >IV đã sử dụng (lưu để giải mã)</span
+                  >
+                </div>
+                <div class="output-box" id="enc-iv-out" style="display: block">
+                  <span style="color: var(--text-dim)">—</span>
+                </div>
+                <div class="status" id="enc-status">
+                  <div class="status-dot"></div>
+                  <span>Sẵn sàng</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">
+                  Hex Dump <span class="badge">RAW BYTES</span>
+                </div>
+                <div class="field-label">Plaintext bytes</div>
+                <div class="hex-dump" id="enc-plain-hex">—</div>
+                <div class="field-label" style="margin-top: 12px">
+                  Ciphertext bytes
+                </div>
+                <div class="hex-dump" id="enc-cipher-hex">—</div>
+              </div>
+
+              <div class="side-info">
+                <div class="side-info-row">
+                  <span class="k">Thuật toán</span>
+                  <span class="v" id="info-algo">AES-128-CBC</span>
+                </div>
+                <div class="side-info-row">
+                  <span class="k">Padding</span>
+                  <span class="v ok">PKCS#7</span>
+                </div>
+                <div class="side-info-row">
+                  <span class="k">Độ dài plaintext</span>
+                  <span class="v" id="info-plain-len">—</span>
+                </div>
+                <div class="side-info-row">
+                  <span class="k">Độ dài ciphertext</span>
+                  <span class="v" id="info-cipher-len">—</span>
+                </div>
+                <div class="side-info-row">
+                  <span class="k">Số khối (16-byte)</span>
+                  <span class="v" id="info-blocks">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DECRYPT TAB -->
+        <div id="tab-dec" class="tab-content">
+          <div class="two-col">
+            <div>
+              <div class="card">
+                <div class="card-title">
+                  Cấu hình giải mã <span class="badge">KEY SETUP</span>
+                </div>
+
+                <div class="field">
+                  <div class="field-label">Chế độ</div>
+                  <div class="key-selector">
+                    <div
+                      class="key-opt"
+                      id="dec-ecb"
+                      onclick="setDecMode('ecb')"
+                    >
+                      ECB
+                    </div>
+                    <div
+                      class="key-opt active"
+                      id="dec-cbc"
+                      onclick="setDecMode('cbc')"
+                    >
+                      CBC
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="dec-cfb"
+                      onclick="setDecMode('cfb')"
+                    >
+                      CFB
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="dec-ofb"
+                      onclick="setDecMode('ofb')"
+                    >
+                      OFB
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="dec-ctr"
+                      onclick="setDecMode('ctr')"
+                    >
+                      CTR
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <div class="field-label">Kích thước khóa</div>
+                  <div class="key-selector">
+                    <div
+                      class="key-opt active"
+                      id="dec-k128"
+                      onclick="setDecKeySize(128)"
+                    >
+                      AES-128
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="dec-k192"
+                      onclick="setDecKeySize(192)"
+                    >
+                      AES-192
+                    </div>
+                    <div
+                      class="key-opt"
+                      id="dec-k256"
+                      onclick="setDecKeySize(256)"
+                    >
+                      AES-256
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <div class="field-label">Khóa bí mật</div>
+                  <input
+                    type="text"
+                    id="dec-key"
+                    placeholder="Nhập khóa bí mật..."
+                  />
+                </div>
+
+                <div class="field" id="dec-iv-field">
+                  <div class="field-label">
+                    <span id="dec-iv-lbl">IV (từ khi mã hóa)</span>
+                  </div>
+                  <input
+                    type="text"
+                    id="dec-iv"
+                    placeholder="Dán IV Base64 ở đây..."
+                  />
+                </div>
+
+                <div class="field">
+                  <div class="field-label">Chuỗi mã hóa (Base64)</div>
+                  <textarea
+                    id="dec-input"
+                    placeholder="Dán ciphertext Base64 vào đây..."
+                    rows="5"
+                  ></textarea>
+                </div>
+
+                <div class="btn-row">
+                  <button class="btn btn-ghost" onclick="clearDec()">
+                    Xóa
+                  </button>
+                  <button class="btn btn-green" onclick="doDecrypt()">
+                    🔓 Giải mã →
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="card">
+                <div class="card-title">
+                  Kết quả giải mã <span class="badge">PLAINTEXT</span>
+                </div>
+                <div
+                  class="output-box"
+                  id="dec-output"
+                  style="min-height: 120px"
+                >
+                  <span style="color: var(--text-dim)"
+                    >— văn bản gốc sẽ hiển thị ở đây —</span
+                  >
+                </div>
+                <div class="status" id="dec-status">
+                  <div class="status-dot"></div>
+                  <span>Sẵn sàng</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">Kiểm tra nhanh</div>
+                <p
+                  style="
+                    font-size: 13px;
+                    color: var(--text-dim);
+                    margin-bottom: 14px;
+                  "
+                >
+                  Thử mã hóa và giải mã ngay với dữ liệu mẫu:
+                </p>
+                <div class="btn-row" style="flex-direction: column">
+                  <button
+                    class="btn btn-ghost"
+                    style="width: 100%; justify-content: center"
+                    onclick="loadSample1()"
+                  >
+                    📝 Mẫu 1: Text ASCII ngắn
+                  </button>
+                  <button
+                    class="btn btn-ghost"
+                    style="width: 100%; justify-content: center"
+                    onclick="loadSample2()"
+                  >
+                    🇻🇳 Mẫu 2: Tiếng Việt UTF-8
+                  </button>
+                  <button
+                    class="btn btn-ghost"
+                    style="width: 100%; justify-content: center"
+                    onclick="loadSample3()"
+                  >
+                    🔢 Mẫu 3: NIST Test Vector
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <footer class="footer">
+      <span>© 2025 — Học viện Kỹ thuật Mật mã — Môn CSATBMTT</span>
+      <span>AES-ECB / CBC / CFB / OFB / CTR — Tự cài đặt bằng JavaScript</span>
+    </footer>
+
+    <script src="../js/aes-core.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/aes-lib.js"></script>
+    <script>
+      let encKeyBits = 128;
+      let decKeyBits = 128;
+      let encMode = "cbc";
+      let decMode = "cbc";
+
+      const roundsMap = { 128: 10, 192: 12, 256: 14 };
+
+      // ── Mode selectors
+      function setEncMode(m) {
+        encMode = m;
+        ["enc-ecb", "enc-cbc", "enc-cfb", "enc-ofb", "enc-ctr"].forEach((id) =>
+          document.getElementById(id).classList.remove("active"),
+        );
+        document.getElementById("enc-" + m).classList.add("active");
+        document.getElementById("enc-mode-warn").style.display =
+          m === "ecb" ? "block" : "none";
+        const ivField = document.getElementById("enc-iv-field");
+        const ivLbl = document.getElementById("enc-iv-lbl");
+        const ivHint = document.getElementById("enc-iv-hint");
+        if (m === "ecb") {
+          ivField.style.display = "none";
+        } else if (m === "ctr") {
+          ivField.style.display = "";
+          ivLbl.textContent = "Nonce (8 bytes)";
+          ivHint.textContent = "// để trống = ngẫu nhiên";
+        } else {
+          ivField.style.display = "";
+          ivLbl.textContent = "IV — Initialization Vector";
+          ivHint.textContent = "// để trống = ngẫu nhiên";
+        }
+        document.getElementById("info-algo").textContent =
+          "AES-" + encKeyBits + "-" + m.toUpperCase();
+      }
+      function setDecMode(m) {
+        decMode = m;
+        ["dec-ecb", "dec-cbc", "dec-cfb", "dec-ofb", "dec-ctr"].forEach((id) =>
+          document.getElementById(id).classList.remove("active"),
+        );
+        document.getElementById("dec-" + m).classList.add("active");
+        const ivField = document.getElementById("dec-iv-field");
+        const ivLbl = document.getElementById("dec-iv-lbl");
+        if (m === "ecb") {
+          ivField.style.display = "none";
+        } else if (m === "ctr") {
+          ivField.style.display = "";
+          ivLbl.textContent = "Nonce (từ khi mã hóa)";
+        } else {
+          ivField.style.display = "";
+          ivLbl.textContent = "IV (từ khi mã hóa)";
+        }
+      }
+
+      function setEncKeySize(bits) {
+        encKeyBits = bits;
+        ["enc-k128", "enc-k192", "enc-k256"].forEach((id) =>
+          document.getElementById(id).classList.remove("active"),
+        );
+        document.getElementById("enc-k" + bits).classList.add("active");
+        document.getElementById("stat-keysize").textContent = bits;
+        document.getElementById("stat-rounds").textContent = roundsMap[bits];
+        document.getElementById("info-algo").textContent =
+          "AES-" + bits + "-" + encMode.toUpperCase();
+        document.getElementById("enc-key-info").textContent =
+          "AES-" + bits + ": cần " + bits / 8 + " bytes (pad/cắt tự động)";
+        updateKeyDisplay();
+      }
+
+      function setDecKeySize(bits) {
+        decKeyBits = bits;
+        ["dec-k128", "dec-k192", "dec-k256"].forEach((id) =>
+          document.getElementById(id).classList.remove("active"),
+        );
+        document.getElementById("dec-k" + bits).classList.add("active");
+      }
+
+      function updateKeyDisplay() {
+        const keyStr = document.getElementById("enc-key").value;
+        const bytes = Utils.prepareKey(keyStr, encKeyBits);
+        const disp = document.getElementById("enc-key-bytes");
+        disp.innerHTML = bytes
+          .map(
+            (b) =>
+              '<div class="key-byte">' +
+              b.toString(16).padStart(2, "0").toUpperCase() +
+              "</div>",
+          )
+          .join("");
+      }
+
+      function switchTab(tab) {
+        document
+          .getElementById("tab-enc")
+          .classList.toggle("active", tab === "enc");
+        document
+          .getElementById("tab-dec")
+          .classList.toggle("active", tab === "dec");
+        document
+          .getElementById("tab-enc-btn")
+          .classList.toggle("active", tab === "enc");
+        document
+          .getElementById("tab-dec-btn")
+          .classList.toggle("active", tab === "dec");
+        const links = document.querySelectorAll(".sidebar-nav a");
+        links[0].classList.toggle("active", tab === "enc");
+        links[1].classList.toggle("active", tab === "dec");
+      }
+
+      function setStatus(id, type, msg) {
+        const el = document.getElementById(id);
+        el.className = "status " + type;
+        el.innerHTML = '<div class="status-dot"></div><span>' + msg + "</span>";
+      }
+
+      function showOutput(id, text, type) {
+        type = type || "ok";
+        const el = document.getElementById(id);
+        el.className = "output-box " + type;
+        el.innerHTML =
+          type !== "err"
+            ? '<button class="copy-btn" onclick="doCopy(\'' +
+              id +
+              '\')">COPY</button><span id="' +
+              id +
+              '-txt">' +
+              escHtml(text) +
+              "</span>"
+            : "<span>" + escHtml(text) + "</span>";
+      }
+
+      function escHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function doCopy(id) {
+        const text = document.getElementById(id + "-txt")?.textContent || "";
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        const btn = document.querySelector("#" + id + " .copy-btn");
+        if (btn) {
+          btn.textContent = "COPIED!";
+          setTimeout(() => (btn.textContent = "COPY"), 1500);
+        }
+      }
+
+      function clearEnc() {
+        ["enc-key", "enc-iv", "enc-input"].forEach(
+          (id) => (document.getElementById(id).value = ""),
+        );
+        document.getElementById("enc-key-bytes").innerHTML = "";
+        document.getElementById("enc-output").innerHTML =
+          '<span style="color:var(--text-dim)">—</span>';
+        document.getElementById("enc-iv-out").innerHTML =
+          '<span style="color:var(--text-dim)">—</span>';
+        document.getElementById("enc-plain-hex").textContent = "—";
+        document.getElementById("enc-cipher-hex").textContent = "—";
+        [
+          "info-plain-len",
+          "info-cipher-len",
+          "info-blocks",
+          "stat-blocks",
+          "stat-time",
+        ].forEach((id) => (document.getElementById(id).textContent = "—"));
+        setStatus("enc-status", "", "Sẵn sàng");
+      }
+
+      function clearDec() {
+        ["dec-key", "dec-iv", "dec-input"].forEach(
+          (id) => (document.getElementById(id).value = ""),
+        );
+        document.getElementById("dec-output").innerHTML =
+          '<span style="color:var(--text-dim)">—</span>';
+        setStatus("dec-status", "", "Sẵn sàng");
+      }
+
+      function doEncrypt() {
+        const keyStr = document.getElementById("enc-key").value;
+        const ivStr = document.getElementById("enc-iv").value.trim();
+        const plain = document.getElementById("enc-input").value;
+
+        if (!keyStr) {
+          setStatus("enc-status", "err", "⚠ Vui lòng nhập khóa bí mật");
+          return;
+        }
+        if (!plain) {
+          setStatus("enc-status", "err", "⚠ Vui lòng nhập văn bản");
+          return;
+        }
+
+        try {
+          const keyBytes = Utils.prepareKey(keyStr, encKeyBits);
+          const plainBytes = Utils.strToBytes(plain);
+          let cipherBytes, ivOrNonce;
+
+          const t0 = Date.now();
+          if (encMode === "ecb") {
+            cipherBytes = AES.ecbEncrypt(plainBytes, keyBytes);
+            ivOrNonce = null;
+          } else if (encMode === "ctr") {
+            var nonce = ivStr
+              ? Utils.prepareKey(ivStr, 64)
+              : Utils.randomBytes(8);
+            cipherBytes = AES.ctrEncrypt(plainBytes, keyBytes, nonce);
+            ivOrNonce = nonce;
+          } else {
+            // CBC, CFB, OFB — all use 16-byte IV
+            var iv = ivStr
+              ? Utils.prepareKey(ivStr, 128)
+              : Utils.randomBytes(16);
+            cipherBytes = AES.encrypt(plainBytes, keyBytes, {
+              mode: encMode,
+              iv: iv,
+            });
+            ivOrNonce = iv;
+          }
+          const elapsed = Date.now() - t0;
+
+          const cipherB64 = Utils.toBase64(cipherBytes);
+          const noPad =
+            encMode === "ctr" || encMode === "cfb" || encMode === "ofb";
+          const blocks = noPad
+            ? Math.ceil(plainBytes.length / 16)
+            : cipherBytes.length / 16;
+
+          showOutput("enc-output", cipherB64);
+          if (ivOrNonce) {
+            var ivB64 = Utils.toBase64(ivOrNonce);
+            showOutput("enc-iv-out", ivB64);
+            document.getElementById("enc-iv-out").style.display = "block";
+            document.getElementById("enc-iv-out-lbl").textContent =
+              encMode === "ctr"
+                ? "Nonce đã sử dụng"
+                : "IV đã sử dụng (lưu để giải mã)";
+          } else {
+            document.getElementById("enc-iv-out").style.display = "none";
+          }
+
+          document.getElementById("enc-plain-hex").textContent =
+            Utils.formatHexDump(plainBytes);
+          document.getElementById("enc-cipher-hex").textContent =
+            Utils.formatHexDump(cipherBytes);
+
+          document.getElementById("info-plain-len").textContent =
+            plainBytes.length + " bytes";
+          document.getElementById("info-cipher-len").textContent =
+            cipherBytes.length + " bytes";
+          document.getElementById("info-blocks").textContent = blocks + " khối";
+          document.getElementById("stat-blocks").textContent = blocks;
+          document.getElementById("stat-time").textContent = elapsed;
+
+          var modeUpper = encMode.toUpperCase();
+          setStatus(
+            "enc-status",
+            "ok",
+            "✓ Mã hóa thành công — AES-" +
+              encKeyBits +
+              "-" +
+              modeUpper +
+              " — " +
+              plainBytes.length +
+              "B → " +
+              cipherBytes.length +
+              "B — " +
+              elapsed +
+              "ms",
+          );
+        } catch (e) {
+          showOutput("enc-output", "⚠ Lỗi: " + e.message, "err");
+          setStatus("enc-status", "err", e.message);
+        }
+      }
+
+      function doDecrypt() {
+        const keyStr = document.getElementById("dec-key").value;
+        const ivB64 = document.getElementById("dec-iv").value.trim();
+        const cipherB64 = document.getElementById("dec-input").value.trim();
+
+        if (!keyStr) {
+          setStatus("dec-status", "err", "⚠ Vui lòng nhập khóa bí mật");
+          return;
+        }
+        if (decMode !== "ecb" && !ivB64) {
+          setStatus(
+            "dec-status",
+            "err",
+            "⚠ Vui lòng nhập " + (decMode === "ctr" ? "Nonce" : "IV"),
+          );
+          return;
+        }
+        if (!cipherB64) {
+          setStatus("dec-status", "err", "⚠ Vui lòng nhập chuỗi mã hóa");
+          return;
+        }
+
+        try {
+          const keyBytes = Utils.prepareKey(keyStr, decKeyBits);
+          const cipherBytes = Utils.fromBase64(cipherB64);
+          let plainBytes;
+
+          const t0 = Date.now();
+          if (decMode === "ecb") {
+            plainBytes = AES.ecbDecrypt(cipherBytes, keyBytes);
+          } else if (decMode === "ctr") {
+            const nonce = Utils.fromBase64(ivB64);
+            plainBytes = AES.ctrDecrypt(cipherBytes, keyBytes, nonce);
+          } else {
+            // CBC, CFB, OFB — all use 16-byte IV
+            const ivBytes = Utils.fromBase64(ivB64);
+            plainBytes = AES.decrypt(cipherBytes, keyBytes, {
+              mode: decMode,
+              iv: ivBytes,
+            });
+          }
+          const elapsed = Date.now() - t0;
+
+          const plainText = Utils.bytesToStr(plainBytes);
+          showOutput("dec-output", plainText);
+          var modeUpper = decMode.toUpperCase();
+          setStatus(
+            "dec-status",
+            "ok",
+            "✓ Giải mã thành công — AES-" +
+              decKeyBits +
+              "-" +
+              modeUpper +
+              " — " +
+              cipherBytes.length +
+              "B → " +
+              plainBytes.length +
+              "B — " +
+              elapsed +
+              "ms",
+          );
+        } catch (e) {
+          showOutput(
+            "dec-output",
+            "⚠ Lỗi: " +
+              e.message +
+              "\n(Kiểm tra lại khóa, IV/Nonce hoặc ciphertext)",
+            "err",
+          );
+          setStatus("dec-status", "err", e.message);
+        }
+      }
+
+      // SAMPLE DATA
+      function loadSample1() {
+        document.getElementById("enc-key").value = "SecretKey!@#2025";
+        document.getElementById("enc-iv").value = "InitVector123456";
+        document.getElementById("enc-input").value =
+          "Hello, World! This is a test of AES encryption.";
+        setEncKeySize(128);
+        setEncMode("cbc");
+        switchTab("enc");
+      }
+      function loadSample2() {
+        document.getElementById("enc-key").value = "MatMaHoc2025!VN!";
+        document.getElementById("enc-iv").value = "";
+        document.getElementById("enc-input").value =
+          "Xin chào! Đây là thử nghiệm mã hóa AES với tiếng Việt. 🔐";
+        setEncKeySize(128);
+        setEncMode("cbc");
+        switchTab("enc");
+      }
+      function loadSample3() {
+        document.getElementById("enc-key").value = "CorrectHorseBatt";
+        document.getElementById("enc-input").value = "Two One Nine Two";
+        document.getElementById("enc-iv").value = "AAAAAAAAAAAAAAAA";
+        setEncKeySize(128);
+        setEncMode("cbc");
+        switchTab("enc");
+      }
+
+      // Init
+      updateKeyDisplay();
+    </script>
+  </body>
+</html>

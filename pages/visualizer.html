@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AES Visualizer — CSATBMTT — Học viện KTMM</title>
     <link rel="stylesheet" href="../css/style.css" />
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
     <style>
       /* ══════════════════════════════════════════════════
          VISUALIZER — FIXED VIEWPORT LAYOUT
@@ -213,19 +214,48 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 14px;
+        font-size: 13px;
         cursor: pointer;
         transition: all 0.15s;
         flex-shrink: 0;
+      }
+      .player-btn .ico {
+        width: 16px;
+        height: 16px;
+        stroke-width: 2.2;
+      }
+      .player-btn.play-toggle .ico {
+        width: 18px;
+        height: 18px;
       }
       .player-btn:hover {
         border-color: var(--cyan);
         color: var(--cyan);
       }
-      .player-btn.active {
-        background: rgba(0, 212, 255, 0.12);
-        border-color: var(--cyan);
+      .player-btn.play-toggle {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(
+          135deg,
+          rgba(0, 212, 255, 0.2),
+          rgba(0, 232, 154, 0.16)
+        );
+        border-color: rgba(0, 212, 255, 0.55);
         color: var(--cyan);
+      }
+      .player-btn.play-toggle:hover {
+        border-color: var(--cyan);
+        box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+      }
+      .player-btn.active {
+        background: linear-gradient(
+          135deg,
+          rgba(0, 232, 154, 0.24),
+          rgba(0, 212, 255, 0.2)
+        );
+        border-color: var(--green);
+        color: var(--green);
       }
       .player-btn:disabled {
         opacity: 0.3;
@@ -897,7 +927,7 @@
             onclick="goStep(0)"
             title="Bước đầu"
           >
-            ⏮
+            <i class="ico" data-lucide="skip-back"></i>
           </button>
           <button
             class="player-btn"
@@ -905,15 +935,16 @@
             onclick="goStep(curStep - 1)"
             title="Bước trước"
           >
-            ◀
+            <i class="ico" data-lucide="rewind"></i>
           </button>
           <button
-            class="player-btn"
+            class="player-btn play-toggle"
             id="pb-play"
             onclick="togglePlay()"
             title="Play/Pause"
           >
-            ▶
+            <i class="ico ico-play" data-lucide="play"></i>
+            <i class="ico ico-pause hidden" data-lucide="pause"></i>
           </button>
           <button
             class="player-btn"
@@ -921,7 +952,7 @@
             onclick="goStep(curStep + 1)"
             title="Bước tiếp"
           >
-            ▶
+            <i class="ico" data-lucide="fast-forward"></i>
           </button>
           <button
             class="player-btn"
@@ -929,7 +960,7 @@
             onclick="goStep(currentTrace.length - 1)"
             title="Bước cuối"
           >
-            ⏭
+            <i class="ico" data-lucide="skip-forward"></i>
           </button>
           <div class="player-progress">
             <div class="player-track" onclick="onTrackClick(event)">
@@ -1569,7 +1600,12 @@
         document.getElementById("pb-next").disabled = curStep >= total - 1;
         document.getElementById("pb-last").disabled = curStep >= total - 1;
         const playBtn = document.getElementById("pb-play");
-        playBtn.textContent = isPlaying ? "⏸" : "▶";
+        const playIcon = playBtn.querySelector(".ico-play");
+        const pauseIcon = playBtn.querySelector(".ico-pause");
+        if (playIcon && pauseIcon) {
+          playIcon.classList.toggle("hidden", isPlaying);
+          pauseIcon.classList.toggle("hidden", !isPlaying);
+        }
         playBtn.classList.toggle("active", isPlaying);
       }
 
@@ -1669,7 +1705,12 @@
         }
       });
 
-      window.addEventListener("load", runViz);
+      window.addEventListener("load", function () {
+        if (window.lucide) {
+          window.lucide.createIcons({ attrs: { "stroke-width": 2.2 } });
+        }
+        runViz();
+      });
     </script>
   </body>
 </html>

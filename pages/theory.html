@@ -5,198 +5,491 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lý thuyết AES — CSATBMTT — Học viện KTMM</title>
     <link rel="stylesheet" href="../css/style.css" />
+
+    <!-- Highlight.js — atom-one-dark theme -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
     <style>
-      .toc {
-        background: var(--surface);
+      /* ══════════════════════════════════════════
+         Blend Highlight.js with project palette
+      ══════════════════════════════════════════ */
+      pre code.hljs {
+        background: #1a1f2e !important;
         border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 18px 20px;
-        margin-bottom: 28px;
+        border-radius: var(--radius) !important;
+        font-family: var(--font-mono) !important;
+        font-size: 12.5px !important;
+        line-height: 1.75 !important;
+        padding: 18px 20px !important;
+        margin: 0 !important;
+        display: block;
+        overflow-x: auto;
       }
-      .toc-title {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: var(--cyan);
-        margin-bottom: 10px;
-      }
-      .toc ol {
-        padding-left: 18px;
-      }
-      .toc li {
-        margin-bottom: 4px;
-        font-size: 13px;
-      }
-      .toc a {
-        color: var(--text-dim);
-        text-decoration: none;
-      }
-      .toc a:hover {
-        color: var(--cyan);
+      pre {
+        position: relative;
+        margin: 14px 0 !important;
       }
 
+      /* Language label (top-right corner) */
+      pre[data-lang]::before {
+        content: attr(data-lang);
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        background: #1a1f2e;
+        padding: 1px 6px;
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      /* Token colour overrides — cyan/amber/green/violet palette */
+      .hljs-keyword,
+      .hljs-built_in {
+        color: #61d9fa !important;
+      }
+      .hljs-number {
+        color: #f0b858 !important;
+      }
+      .hljs-string,
+      .hljs-attr {
+        color: #98e08a !important;
+      }
+      .hljs-comment {
+        color: #6b7a99 !important;
+        font-style: italic;
+      }
+      .hljs-function .hljs-title,
+      .hljs-title.function_ {
+        color: #c5a5ff !important;
+      }
+      .hljs-variable,
+      .hljs-params {
+        color: #e8eaed !important;
+      }
+      .hljs-operator {
+        color: #89c4f4 !important;
+      }
+      .hljs-punctuation {
+        color: #8898aa !important;
+      }
+      /* Plaintext / pseudocode blocks stay neutral */
+      pre[data-lang="PSEUDOCODE"] code.hljs {
+        color: #c8d3e6 !important;
+      }
+
+      /* Copy button */
+      .code-wrap {
+        position: relative;
+      }
+      .copy-btn {
+        position: absolute;
+        top: 8px;
+        right: 96px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text-dim);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 1px;
+        padding: 2px 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        z-index: 2;
+      }
+      .copy-btn:hover {
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+      .copy-btn.copied {
+        border-color: var(--green);
+        color: var(--green);
+      }
+
+      /* ══════════════════════════════════════════
+         Page-specific styles
+      ══════════════════════════════════════════ */
+      .theory-text p {
+        line-height: 1.85;
+        color: var(--text-dim);
+        margin-bottom: 12px;
+      }
+      .theory-text ul,
+      .theory-text ol {
+        margin: 10px 0 10px 24px;
+        line-height: 2;
+        color: var(--text-dim);
+      }
+      .theory-text code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        background: var(--surface2);
+        padding: 1px 6px;
+        border-radius: 4px;
+        color: var(--cyan);
+      }
       .section-title {
         font-family: var(--font-head);
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 800;
         color: #fff;
-        margin: 32px 0 12px;
-        padding-bottom: 8px;
+        margin: 32px 0 16px;
+        padding-bottom: 10px;
         border-bottom: 1px solid var(--border);
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
       }
-      .section-title span {
-        font-family: var(--font-mono);
+      .section-title > span {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(0, 212, 255, 0.12);
+        border: 1px solid var(--cyan);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 11px;
         color: var(--cyan);
-        border: 1px solid rgba(0, 212, 255, 0.3);
-        padding: 2px 8px;
-        border-radius: 3px;
-      }
-
-      .subsection-title {
-        font-family: var(--font-head);
-        font-size: 16px;
         font-weight: 700;
-        color: var(--text);
-        margin: 22px 0 8px;
+        flex-shrink: 0;
       }
-
-      .matrix-wrap {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin: 14px 0;
-      }
-
-      .matrix {
-        display: inline-grid;
-        grid-template-columns: repeat(4, 40px);
-        gap: 2px;
-        font-family: var(--font-mono);
-        font-size: 12px;
-      }
-
-      .matrix.cols-2 {
-        grid-template-columns: repeat(2, 50px);
-      }
-
-      .matrix-cell {
-        height: 36px;
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 3px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text);
-        transition: all 0.3s;
-      }
-      .matrix-cell.c {
-        color: var(--cyan);
-        border-color: rgba(0, 212, 255, 0.3);
-        background: rgba(0, 212, 255, 0.07);
-      }
-      .matrix-cell.g {
-        color: var(--green);
-        border-color: rgba(0, 255, 157, 0.3);
-        background: rgba(0, 255, 157, 0.05);
-      }
-      .matrix-cell.a {
-        color: var(--amber);
-      }
-
-      .bracket-l,
-      .bracket-r {
-        font-size: 48px;
-        color: var(--text-dim);
-        font-weight: 100;
-        line-height: 1;
-      }
-
-      .round-steps {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin: 16px 0;
-      }
-
-      .round-step {
-        padding: 8px 14px;
-        border: 1px solid var(--border);
+      .alert {
         border-radius: var(--radius);
-        font-family: var(--font-mono);
-        font-size: 11px;
-        color: var(--text-dim);
-        display: flex;
-        align-items: center;
-        gap: 6px;
+        padding: 12px 16px;
+        margin: 14px 0;
+        font-size: 13px;
+        line-height: 1.6;
       }
-
-      .round-step.active {
-        border-color: var(--cyan);
-        color: var(--cyan);
+      .alert-info {
         background: rgba(0, 212, 255, 0.06);
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        color: #9dc8e0;
       }
-
-      .round-step .num {
-        width: 20px;
-        height: 20px;
-        background: var(--border);
-        border-radius: 3px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: 600;
+      .alert-warn {
+        background: rgba(255, 179, 0, 0.06);
+        border: 1px solid rgba(255, 179, 0, 0.2);
+        color: #d4a84b;
       }
-
-      .round-step.active .num {
-        background: var(--cyan);
-        color: var(--bg);
+      .alert-danger {
+        background: rgba(255, 80, 80, 0.06);
+        border: 1px solid rgba(255, 80, 80, 0.2);
+        color: #e08080;
+      }
+      .alert-success {
+        background: rgba(0, 232, 154, 0.06);
+        border: 1px solid rgba(0, 232, 154, 0.2);
+        color: #6bc99a;
       }
 
       .keybits-table {
         width: 100%;
         border-collapse: collapse;
-        font-family: var(--font-mono);
+        margin: 14px 0;
         font-size: 13px;
-        margin: 12px 0;
       }
       .keybits-table th {
-        padding: 10px 16px;
         background: var(--surface2);
-        border: 1px solid var(--border);
         color: var(--cyan);
-        font-size: 10px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 1px;
+        padding: 8px 12px;
+        text-align: left;
+        border: 1px solid var(--border);
       }
       .keybits-table td {
-        padding: 10px 16px;
+        padding: 8px 12px;
         border: 1px solid var(--border);
-        color: var(--text);
-        text-align: center;
+        color: var(--text-dim);
       }
       .keybits-table tr:hover td {
         background: rgba(255, 255, 255, 0.02);
+      }
+
+      .matrix-wrap {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 16px 0;
+      }
+      .matrix {
+        display: grid;
+        grid-template-columns: repeat(4, 42px);
+        gap: 4px;
+      }
+      .matrix-cell {
+        height: 42px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-dim);
+      }
+      .bracket-l,
+      .bracket-r {
+        font-size: 56px;
+        color: var(--border2);
+        line-height: 1;
+        font-weight: 100;
+      }
+
+      .round-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 16px 0;
+      }
+      .round-step {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 13px;
+        color: var(--text-dim);
+      }
+      .round-step .num {
+        min-width: 56px;
+        height: 28px;
+        background: var(--surface2);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--cyan);
+        flex-shrink: 0;
+      }
+      .round-step.active {
+        border-color: rgba(0, 212, 255, 0.25);
+      }
+
+      .toc {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 20px 24px;
+        margin-bottom: 32px;
+      }
+      .toc-title {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 2px;
+        color: var(--cyan);
+        margin-bottom: 12px;
+      }
+      .toc ol {
+        margin-left: 18px;
+      }
+      .toc li {
+        margin-bottom: 6px;
+      }
+      .toc a {
+        color: var(--text-dim);
+        text-decoration: none;
+        font-size: 13px;
+        transition: color 0.15s;
+      }
+      .toc a:hover {
+        color: var(--cyan);
+      }
+
+      .sbox-cell {
+        height: 28px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--text-muted);
+      }
+      .sbox-cell.highlight {
+        background: rgba(0, 212, 255, 0.12);
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+
+      .mode-compare {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 14px;
+        margin: 16px 0;
+      }
+      .mode-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+      }
+      .mode-card-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .mode-badge {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 12px;
+        border: 1px solid;
+      }
+      .mode-badge.ecb {
+        color: #ff6060;
+        border-color: #ff6060;
+        background: rgba(255, 96, 96, 0.08);
+      }
+      .mode-badge.cbc {
+        color: var(--green);
+        border-color: var(--green);
+        background: rgba(0, 232, 154, 0.08);
+      }
+      .mode-badge.cfb {
+        color: var(--cyan);
+        border-color: var(--cyan);
+        background: rgba(0, 212, 255, 0.08);
+      }
+      .mode-badge.ofb {
+        color: var(--amber);
+        border-color: var(--amber);
+        background: rgba(255, 179, 0, 0.08);
+      }
+      .mode-badge.ctr {
+        color: #c084fc;
+        border-color: #c084fc;
+        background: rgba(192, 132, 252, 0.08);
+      }
+      .mode-card-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .mode-card p {
+        font-size: 12px;
+        color: var(--text-dim);
+        line-height: 1.6;
+        margin: 0 0 8px;
+      }
+      .prop-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .prop-tag {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: var(--surface2);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+      }
+      .prop-tag.yes {
+        color: var(--green);
+        border-color: rgba(0, 232, 154, 0.3);
+      }
+      .prop-tag.no {
+        color: #ff6060;
+        border-color: rgba(255, 96, 96, 0.3);
+      }
+
+      .diagram-flow {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        flex-wrap: wrap;
+        margin: 16px 0;
+      }
+      .df-block {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 8px 14px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-dim);
+        white-space: nowrap;
+      }
+      .df-arrow {
+        padding: 0 6px;
+        color: var(--border2);
+        font-size: 16px;
+      }
+      .df-block.enc {
+        border-color: rgba(0, 212, 255, 0.3);
+        color: var(--cyan);
+      }
+      .df-block.out {
+        border-color: rgba(155, 100, 255, 0.3);
+        color: #9b64ff;
+      }
+
+      .security-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0;
+        font-size: 12px;
+      }
+      .security-table th {
+        background: var(--surface2);
+        color: var(--cyan);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 1px;
+        padding: 8px 12px;
+        text-align: left;
+        border: 1px solid var(--border);
+      }
+      .security-table td {
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+      }
+      .security-table .tag-safe {
+        color: var(--green);
+        font-weight: 600;
+      }
+      .security-table .tag-bad {
+        color: #ff6060;
+        font-weight: 600;
       }
     </style>
   </head>
   <body>
     <div class="bg-grid"></div>
 
-    <!-- NAV -->
     <nav class="nav">
       <a class="nav-brand" href="../index.html">
         <div class="nav-logo">AES</div>
         <div>
           <div class="nav-title">AES CIPHER</div>
-          <div class="nav-subtitle">// Cơ sở an toàn & bảo mật thông tin</div>
+          <div class="nav-subtitle">
+            // Cơ sở an toàn &amp; bảo mật thông tin
+          </div>
         </div>
       </a>
       <ul class="nav-links">
@@ -212,7 +505,6 @@
     </nav>
 
     <div class="page-layout">
-      <!-- SIDEBAR -->
       <aside class="sidebar">
         <span class="sidebar-label">Nội dung</span>
         <ul class="sidebar-nav">
@@ -235,7 +527,9 @@
             >
           </li>
           <li>
-            <a href="#subbytes"><span class="icon">🔄</span> SubBytes</a>
+            <a href="#subbytes"
+              ><span class="icon">🔄</span> SubBytes &amp; S-Box</a
+            >
           </li>
           <li>
             <a href="#shiftrows"><span class="icon">↔</span> ShiftRows</a>
@@ -247,7 +541,27 @@
             <a href="#addroundkey"><span class="icon">⊕</span> AddRoundKey</a>
           </li>
           <li>
+            <a href="#padding"><span class="icon">📦</span> PKCS#7 Padding</a>
+          </li>
+          <li>
+            <a href="#ecb"><span class="icon">📋</span> Chế độ ECB</a>
+          </li>
+          <li>
             <a href="#cbc"><span class="icon">🔗</span> Chế độ CBC</a>
+          </li>
+          <li>
+            <a href="#cfb"><span class="icon">↩</span> Chế độ CFB</a>
+          </li>
+          <li>
+            <a href="#ofb"><span class="icon">🔁</span> Chế độ OFB</a>
+          </li>
+          <li>
+            <a href="#ctr"><span class="icon">🔢</span> Chế độ CTR</a>
+          </li>
+          <li>
+            <a href="#modes-compare"
+              ><span class="icon">📊</span> So sánh các chế độ</a
+            >
           </li>
           <li>
             <a href="#security"><span class="icon">🛡</span> Độ an toàn</a>
@@ -255,7 +569,6 @@
         </ul>
       </aside>
 
-      <!-- MAIN -->
       <main class="main">
         <div class="page-header">
           <div class="page-tag">Lý thuyết</div>
@@ -264,11 +577,11 @@
           </h1>
           <p class="page-desc">
             Phân tích toàn diện thuật toán mã hóa đối xứng AES — tiêu chuẩn NIST
-            FIPS 197.
+            FIPS 197, bao gồm tất cả các phép biến đổi nội tại và 5 chế độ hoạt
+            động.
           </p>
         </div>
 
-        <!-- TOC -->
         <div class="toc">
           <div class="toc-title">// Mục lục</div>
           <ol>
@@ -276,32 +589,37 @@
             <li><a href="#gf">Phép toán trên trường Galois GF(2⁸)</a></li>
             <li><a href="#structure">Cấu trúc tổng quan thuật toán</a></li>
             <li><a href="#keyschedule">Mở rộng khóa (Key Expansion)</a></li>
-            <li><a href="#subbytes">Phép biến đổi SubBytes</a></li>
+            <li>
+              <a href="#subbytes">Phép biến đổi SubBytes &amp; S-Box đầy đủ</a>
+            </li>
             <li><a href="#shiftrows">Phép biến đổi ShiftRows</a></li>
             <li><a href="#mixcolumns">Phép biến đổi MixColumns</a></li>
             <li><a href="#addroundkey">Phép biến đổi AddRoundKey</a></li>
+            <li><a href="#padding">PKCS#7 Padding</a></li>
+            <li><a href="#ecb">Chế độ ECB (Electronic Codebook)</a></li>
             <li><a href="#cbc">Chế độ CBC (Cipher Block Chaining)</a></li>
-            <li><a href="#security">Độ an toàn và ứng dụng</a></li>
+            <li><a href="#cfb">Chế độ CFB (Cipher Feedback)</a></li>
+            <li><a href="#ofb">Chế độ OFB (Output Feedback)</a></li>
+            <li><a href="#ctr">Chế độ CTR (Counter Mode)</a></li>
+            <li><a href="#modes-compare">So sánh 5 chế độ hoạt động</a></li>
+            <li><a href="#security">Độ an toàn và ứng dụng thực tế</a></li>
           </ol>
         </div>
 
-        <!-- 1. INTRO -->
+        <!-- ── 01 ── -->
         <div id="intro">
           <div class="section-title"><span>01</span> Giới thiệu AES</div>
           <div class="theory-text">
             <p>
               <strong>AES (Advanced Encryption Standard)</strong> là thuật toán
-              mã hóa khối đối xứng được Viện Tiêu chuẩn và Công nghệ Quốc gia
-              Hoa Kỳ (NIST) công bố năm 2001 theo tiêu chuẩn
+              mã hóa khối đối xứng được NIST công bố năm 2001 theo tiêu chuẩn
               <em>FIPS PUB 197</em>, thay thế cho DES và 3DES đã lỗi thời.
             </p>
             <p>
-              AES dựa trên thuật toán <strong>Rijndael</strong> do hai nhà mật
-              mã học người Bỉ Joan Daemen và Vincent Rijmen thiết kế. Rijndael
-              được chọn sau một cuộc thi quốc tế kéo dài 5 năm (1997–2001) với
-              15 ứng cử viên từ khắp thế giới.
+              AES dựa trên thuật toán <strong>Rijndael</strong> do Joan Daemen
+              và Vincent Rijmen (Bỉ) thiết kế, được chọn sau cuộc thi quốc tế
+              kéo dài 5 năm (1997–2001) với 15 ứng viên.
             </p>
-
             <table class="keybits-table">
               <thead>
                 <tr>
@@ -339,62 +657,59 @@
           </div>
         </div>
 
-        <!-- 2. GF -->
+        <!-- ── 02 ── -->
         <div id="gf">
           <div class="section-title"><span>02</span> Trường Galois GF(2⁸)</div>
           <div class="theory-text">
             <p>
               AES thực hiện tất cả các phép tính trên
-              <strong>trường hữu hạn GF(2⁸)</strong> — trường Galois với 256
-              phần tử. Mỗi phần tử là một byte (8 bit), biểu diễn như một đa
-              thức bậc ≤ 7 với hệ số trong GF(2).
+              <strong>trường hữu hạn GF(2⁸)</strong> — 256 phần tử. Mỗi phần tử
+              là một byte biểu diễn như đa thức bậc ≤ 7 với hệ số trong GF(2).
+              Phép cộng là XOR (⊕); phép nhân là nhân đa thức mod đa thức bất
+              khả quy.
             </p>
-            <p>
-              Phép cộng trong GF(2⁸) chính là XOR (⊕). Phép nhân được định nghĩa
-              là nhân đa thức rồi lấy phần dư theo <em>đa thức bất khả quy</em>:
-            </p>
-            <div class="code-block">
-              <span class="cmt">// Đa thức bất khả quy của AES:</span>
-              <span class="kw">p(x)</span> = x⁸ + x⁴ + x³ + x + 1 =
-              <span class="num">0x11B</span>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="JAVASCRIPT"
+            ><code class="language-javascript">// Đa thức bất khả quy của AES:
+// p(x) = x⁸ + x⁴ + x³ + x + 1  =  0x11B
 
-              <span class="cmt"
-                >// Nhân 2 byte trong GF(2⁸) — phương pháp "shift and
-                reduce":</span
-              >
-              <span class="kw">function</span> gmul(a, b) { let p =
-              <span class="num">0</span>; <span class="kw">for</span> (let i =
-              <span class="num">0</span>; i &lt; <span class="num">8</span>;
-              i++) { <span class="kw">if</span> (b &amp;
-              <span class="num">1</span>) p ^= a;
-              <span class="cmt">// nếu bit thấp nhất của b = 1</span> const
-              hiBit = a &amp; <span class="num">0x80</span>; a = (a &lt;&lt;
-              <span class="num">1</span>) &amp; <span class="num">0xFF</span>;
-              <span class="cmt">// nhân a với x</span>
-              <span class="kw">if</span> (hiBit) a ^=
-              <span class="num">0x1B</span>;
-              <span class="cmt">// khử bậc 8 với p(x) = 0x1B (bỏ bit x⁸)</span>
-              b >>= <span class="num">1</span>; }
-              <span class="kw">return</span> p; }
-            </div>
-            <p>
-              Ví dụ: <strong>gmul(0x57, 0x83) = 0xC1</strong> vì: 0x57 =
-              {x⁶+x⁴+x²+x+1}, 0x83 = {x⁷+x+1}, tích mod p(x) = 0xC1.
-            </p>
+/**
+ * Nhân hai byte trong GF(2⁸) — phương pháp "shift and reduce"
+ * @param {number} a - byte đầu tiên (0x00–0xFF)
+ * @param {number} b - byte thứ hai
+ * @returns {number} tích a × b mod p(x)
+ */
+function gmul(a, b) {
+  let p = 0;
+  for (let i = 0; i < 8; i++) {
+    if (b & 1) p ^= a;              // cộng a nếu bit thấp nhất của b = 1
+    const hiBit = a & 0x80;
+    a = (a << 1) & 0xFF;            // nhân a với x (shift left, giữ 8 bit)
+    if (hiBit) a ^= 0x1B;           // khử bậc 8: 0x11B → 0x1B (bỏ bit x⁸)
+    b >>= 1;                         // dịch b phải 1 bit
+  }
+  return p;
+}
+
+// Ví dụ kiểm tra:
+// gmul(0x57, 0x83) === 0xC1  ✓  (NIST FIPS 197, Section 4.2.1)
+// gmul(0x02, 0x80) === 0x1B  ✓  (overflow → XOR 0x1B)</code></pre>
           </div>
         </div>
 
-        <!-- 3. STRUCTURE -->
+        <!-- ── 03 ── -->
         <div id="structure">
           <div class="section-title"><span>03</span> Cấu trúc thuật toán</div>
           <div class="theory-text">
             <p>
-              AES hoạt động trên <strong>state</strong> — ma trận 4×4 bytes (16
-              bytes = 128 bit). Mỗi vòng (round) áp dụng 4 phép biến đổi tuần tự
-              trên state.
+              AES hoạt động trên <strong>state</strong> — ma trận 4×4 bytes (128
+              bit), nạp theo thứ tự column-major. Mỗi vòng áp dụng 4 phép biến
+              đổi tuần tự:
             </p>
           </div>
-
           <div class="matrix-wrap">
             <div>
               <div
@@ -406,7 +721,7 @@
                   letter-spacing: 1px;
                 "
               >
-                PLAINTEXT (column-major)
+                STATE 4×4 — column-major
               </div>
               <div style="display: flex; align-items: center; gap: 6px">
                 <div class="bracket-l">[</div>
@@ -432,328 +747,742 @@
               </div>
             </div>
           </div>
-
           <div class="round-steps">
             <div class="round-step active">
-              <div class="num">0</div>
-              AddRoundKey (khóa ban đầu)
+              <div class="num">R 0</div>
+              AddRoundKey — Key Whitening ban đầu
             </div>
             <div class="round-step">
-              <div class="num">1…N-1</div>
+              <div class="num">R 1…Nr-1</div>
               SubBytes → ShiftRows → MixColumns → AddRoundKey
             </div>
             <div class="round-step">
-              <div class="num">N</div>
-              SubBytes → ShiftRows → AddRoundKey (vòng cuối)
+              <div class="num">R Nr</div>
+              SubBytes → ShiftRows → AddRoundKey &nbsp;(vòng cuối — không có
+              MixColumns)
             </div>
           </div>
-
           <div class="alert alert-info">
             ℹ️ Vòng cuối <strong>không có MixColumns</strong> để đảm bảo tính
-            thuận nghịch (invertibility) của thuật toán.
+            thuận nghịch — giải mã chỉ cần áp dụng các phép ngược theo thứ tự
+            đảo.
           </div>
         </div>
 
-        <!-- 4. KEY EXPANSION -->
+        <!-- ── 04 ── -->
         <div id="keyschedule">
           <div class="section-title">
-            <span>04</span> Key Expansion (Mở rộng khóa)
+            <span>04</span> Key Expansion — Mở rộng khóa
           </div>
           <div class="theory-text">
             <p>
-              Từ khóa gốc Nk words, Key Expansion sinh ra
-              <strong>(Nr+1)×4</strong> words để dùng cho từng vòng. Mỗi word là
-              4 bytes.
+              Từ khóa gốc <code>Nk</code> words, sinh ra
+              <strong>(Nr+1)×4</strong> words để dùng cho từng vòng. AES-128:
+              Nk=4, Nr=10, sinh 44 words. Rcon đảm bảo mỗi round key luôn duy
+              nhất.
             </p>
-            <div class="code-block">
-              <span class="kw">for</span> (i = Nk; i &lt; (Nr+<span class="num"
-                >1</span
-              >)*<span class="num">4</span>; i++) { temp = w[i-<span class="num"
-                >1</span
-              >]; <span class="kw">if</span> (i % Nk ===
-              <span class="num">0</span>) { temp = SubWord(RotWord(temp)) ^
-              Rcon[i/Nk];
-              <span class="cmt">// RotWord: [a,b,c,d] → [b,c,d,a]</span>
-              <span class="cmt">// SubWord: áp dụng S-Box cho từng byte</span>
-              } <span class="kw">else if</span> (Nk >
-              <span class="num">6</span> && i % Nk ===
-              <span class="num">4</span>) {
-              <span class="cmt">// Chỉ AES-256</span>
-              temp = SubWord(temp); } w[i] = w[i-Nk] ^ temp; }
-            </div>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre data-lang="JAVASCRIPT"><code class="language-javascript">/**
+ * Key Expansion — FIPS 197 Section 5.2
+ * Hỗ trợ AES-128 (Nk=4), AES-192 (Nk=6), AES-256 (Nk=8)
+ */
+function keyExpansion(keyBytes) {
+  const Nk = keyBytes.length / 4;   // số words trong khóa gốc
+  const Nr = Nk + 6;                // số vòng: 10 | 12 | 14
+  const w  = [];
+
+  // Sao chép khóa gốc vào w[0 .. Nk-1]
+  for (let i = 0; i < Nk; i++) {
+    w[i] = keyBytes.slice(i * 4, i * 4 + 4);
+  }
+
+  for (let i = Nk; i < (Nr + 1) * 4; i++) {
+    let temp = w[i - 1].slice();
+
+    if (i % Nk === 0) {
+      // RotWord: [a, b, c, d] → [b, c, d, a]  (dịch trái 1 byte)
+      temp = [temp[1], temp[2], temp[3], temp[0]];
+      // SubWord: áp dụng S-Box cho từng byte
+      temp = temp.map(b => SBOX[b]);
+      // XOR với round constant Rcon[i/Nk]
+      // Rcon = [-, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
+      temp[0] ^= RCON[i / Nk];
+
+    } else if (Nk > 6 && i % Nk === 4) {
+      // Chỉ AES-256: thêm một lần SubWord khi i mod 8 = 4
+      temp = temp.map(b => SBOX[b]);
+    }
+
+    w[i] = w[i - Nk].map((b, j) => b ^ temp[j]);
+  }
+
+  return { w, Nr };
+}</code></pre>
           </div>
         </div>
 
-        <!-- 5. SUBBYTES -->
+        <!-- ── 05 ── -->
         <div id="subbytes">
           <div class="section-title">
-            <span>05</span> SubBytes — Thay thế phi tuyến
+            <span>05</span> SubBytes — Thay thế phi tuyến &amp; S-Box
           </div>
           <div class="theory-text">
             <p>
-              <strong>SubBytes</strong> thay thế mỗi byte trong state bằng giá
-              trị tương ứng trong bảng S-Box (Substitution Box). S-Box được xây
-              dựng qua hai bước:
+              <strong>SubBytes</strong> thay thế mỗi byte bằng giá trị trong
+              bảng S-Box, được xây dựng qua hai bước:
             </p>
-            <ul style="margin: 10px 0 10px 20px; line-height: 2">
+            <ol>
               <li>
-                Tính <strong>nghịch đảo nhân</strong> trong GF(2⁸) (byte 0x00
-                ánh xạ tới chính nó)
+                Tính <strong>nghịch đảo nhân</strong> trong GF(2⁸):
+                <code>b = a⁻¹ mod p(x)</code> (0x00 → 0x00)
               </li>
               <li>
-                Áp dụng <strong>biến đổi affine</strong> trên GF(2):
-                <code>b' = M·b + c</code>
+                Áp dụng <strong>biến đổi affine</strong>:
+                <code>b'ᵢ = bᵢ ⊕ b(i+4)%8 ⊕ … ⊕ cᵢ</code>, với hằng số c = 0x63
               </li>
-            </ul>
-            <p>
-              Ví dụ: <code>SBOX[0x00] = 0x63</code>,
-              <code>SBOX[0x53] = 0xED</code>. S-Box đảm bảo tính
-              <em>nonlinearity</em> cao — bước quan trọng nhất để chống phân
-              tích tuyến tính và vi sai.
-            </p>
+            </ol>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="JAVASCRIPT"
+            ><code class="language-javascript">// SubBytes — thay thế từng byte qua S-Box
+function subBytes(state) {
+  return state.map(row => row.map(byte => SBOX[byte]));
+}
+
+// InvSubBytes — dùng khi giải mã (Inverse S-Box)
+function invSubBytes(state) {
+  return state.map(row => row.map(byte => INV_SBOX[byte]));
+}
+
+// Một số giá trị S-Box đáng chú ý:
+// SBOX[0x00] = 0x63   (do biến đổi affine với c = 0x63)
+// SBOX[0x01] = 0x7C
+// SBOX[0x53] = 0xED
+// SBOX[0xFF] = 0x16
+
+// Test vectors từ NIST FIPS 197 Appendix B:
+// SBOX[0x19] === 0xD4  ✓
+// SBOX[0xA0] === 0xE2  ✓
+// SBOX[0x9A] === 0xB8  ✓</code></pre>
+          </div>
+          <div style="margin: 14px 0">
+            <div
+              style="
+                font-family: var(--font-mono);
+                font-size: 10px;
+                color: var(--text-muted);
+                margin-bottom: 8px;
+                letter-spacing: 1px;
+              "
+            >
+              S-BOX đầy đủ 16×16 — hàng = nibble cao, cột = nibble thấp của byte
+              đầu vào
+            </div>
+            <div id="sbox-container"></div>
           </div>
         </div>
 
-        <!-- 6. SHIFTROWS -->
+        <!-- ── 06 ── -->
         <div id="shiftrows">
-          <div class="section-title">
-            <span>06</span> ShiftRows — Dịch vòng hàng
-          </div>
+          <div class="section-title"><span>06</span> ShiftRows — Dịch hàng</div>
           <div class="theory-text">
             <p>
-              ShiftRows dịch vòng trái mỗi hàng của state một số bước khác nhau:
+              Mỗi hàng được dịch vòng trái (cyclic left shift) theo chỉ số hàng,
+              tạo ra <em>diffusion</em> theo chiều ngang giữa các cột để chuẩn
+              bị cho MixColumns.
             </p>
           </div>
-          <div class="matrix-wrap">
-            <div>
-              <div
-                style="
-                  font-family: var(--font-mono);
-                  font-size: 10px;
-                  color: var(--text-muted);
-                  margin-bottom: 6px;
-                "
-              >
-                Trước ShiftRows
-              </div>
-              <div style="display: flex; align-items: center">
-                <div class="bracket-l">[</div>
-                <div class="matrix">
-                  <div class="matrix-cell c">s₀₀</div>
-                  <div class="matrix-cell c">s₀₁</div>
-                  <div class="matrix-cell c">s₀₂</div>
-                  <div class="matrix-cell c">s₀₃</div>
-                  <div class="matrix-cell">s₁₀</div>
-                  <div class="matrix-cell">s₁₁</div>
-                  <div class="matrix-cell">s₁₂</div>
-                  <div class="matrix-cell">s₁₃</div>
-                  <div class="matrix-cell">s₂₀</div>
-                  <div class="matrix-cell">s₂₁</div>
-                  <div class="matrix-cell">s₂₂</div>
-                  <div class="matrix-cell">s₂₃</div>
-                  <div class="matrix-cell">s₃₀</div>
-                  <div class="matrix-cell">s₃₁</div>
-                  <div class="matrix-cell">s₃₂</div>
-                  <div class="matrix-cell">s₃₃</div>
-                </div>
-                <div class="bracket-r">]</div>
-              </div>
-            </div>
-            <div style="font-size: 24px; color: var(--cyan)">→</div>
-            <div>
-              <div
-                style="
-                  font-family: var(--font-mono);
-                  font-size: 10px;
-                  color: var(--text-muted);
-                  margin-bottom: 6px;
-                "
-              >
-                Sau ShiftRows
-              </div>
-              <div style="display: flex; align-items: center">
-                <div class="bracket-l">[</div>
-                <div class="matrix">
-                  <div class="matrix-cell c">s₀₀</div>
-                  <div class="matrix-cell c">s₀₁</div>
-                  <div class="matrix-cell c">s₀₂</div>
-                  <div class="matrix-cell c">s₀₃</div>
-                  <div class="matrix-cell g">s₁₁</div>
-                  <div class="matrix-cell g">s₁₂</div>
-                  <div class="matrix-cell g">s₁₃</div>
-                  <div class="matrix-cell g">s₁₀</div>
-                  <div class="matrix-cell a">s₂₂</div>
-                  <div class="matrix-cell a">s₂₃</div>
-                  <div class="matrix-cell a">s₂₀</div>
-                  <div class="matrix-cell a">s₂₁</div>
-                  <div class="matrix-cell" style="color: var(--red)">s₃₃</div>
-                  <div class="matrix-cell" style="color: var(--red)">s₃₀</div>
-                  <div class="matrix-cell" style="color: var(--red)">s₃₁</div>
-                  <div class="matrix-cell" style="color: var(--red)">s₃₂</div>
-                </div>
-                <div class="bracket-r">]</div>
-              </div>
-            </div>
-          </div>
-          <div class="theory-text" style="margin-top: 10px">
-            <p>
-              Hàng 0: dịch 0 bước | Hàng 1: dịch trái 1 | Hàng 2: dịch trái 2 |
-              Hàng 3: dịch trái 3
-            </p>
-            <p>
-              ShiftRows đảm bảo rằng các bytes từ một cột không nằm cùng cột sau
-              khi qua MixColumns — tăng <em>diffusion</em> lan rộng theo chiều
-              dọc.
-            </p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="JAVASCRIPT"
+            ><code class="language-javascript">// ShiftRows — mã hóa (cyclic left shift)
+function shiftRows(state) {
+  return [
+    [ state[0][0], state[0][1], state[0][2], state[0][3] ], // hàng 0: shift 0 (giữ nguyên)
+    [ state[1][1], state[1][2], state[1][3], state[1][0] ], // hàng 1: shift 1
+    [ state[2][2], state[2][3], state[2][0], state[2][1] ], // hàng 2: shift 2
+    [ state[3][3], state[3][0], state[3][1], state[3][2] ], // hàng 3: shift 3
+  ];
+}
+
+// InvShiftRows — giải mã (cyclic right shift = left shift bởi 4 - n)
+function invShiftRows(state) {
+  return [
+    [ state[0][0], state[0][1], state[0][2], state[0][3] ], // shift 0
+    [ state[1][3], state[1][0], state[1][1], state[1][2] ], // right 1 = left 3
+    [ state[2][2], state[2][3], state[2][0], state[2][1] ], // right 2 = left 2
+    [ state[3][1], state[3][2], state[3][3], state[3][0] ], // right 3 = left 1
+  ];
+}
+
+// Công thức tổng quát:
+// ShiftRows:    state'[r][c] = state[r][(c + r) % 4]
+// InvShiftRows: state'[r][c] = state[r][(c - r + 4) % 4]</code></pre>
           </div>
         </div>
 
-        <!-- 7. MIXCOLUMNS -->
+        <!-- ── 07 ── -->
         <div id="mixcolumns">
           <div class="section-title"><span>07</span> MixColumns — Trộn cột</div>
           <div class="theory-text">
             <p>
-              <strong>MixColumns</strong> xử lý từng cột của state như một đa
-              thức bậc 3 trên GF(2⁸) và nhân với đa thức cố định
-              <code>c(x) = 3x³ + x² + x + 2</code> modulo <code>x⁴ + 1</code>.
+              Mỗi cột được nhân với ma trận MDS cố định trong GF(2⁸). Sau 2 vòng
+              ShiftRows + MixColumns, mỗi bit output phụ thuộc tất cả 128 bit
+              input (<em>Wide Trail Strategy</em>).
             </p>
-            <p>Tương đương với phép nhân ma trận trong GF(2⁸):</p>
           </div>
-          <div class="matrix-wrap">
-            <div style="display: flex; align-items: center">
-              <div class="bracket-l">[</div>
-              <div
-                class="matrix cols-2"
-                style="grid-template-columns: repeat(4, 44px)"
-              >
-                <div class="matrix-cell c">02</div>
-                <div class="matrix-cell c">03</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">02</div>
-                <div class="matrix-cell c">03</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">02</div>
-                <div class="matrix-cell c">03</div>
-                <div class="matrix-cell c">03</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">01</div>
-                <div class="matrix-cell c">02</div>
-              </div>
-              <div class="bracket-r">]</div>
-            </div>
-            <span style="font-size: 20px; color: var(--text-dim)">×</span>
-            <div style="display: flex; align-items: center">
-              <div class="bracket-l">[</div>
-              <div
-                class="matrix cols-2"
-                style="grid-template-columns: repeat(1, 40px)"
-              >
-                <div class="matrix-cell">s₀</div>
-                <div class="matrix-cell">s₁</div>
-                <div class="matrix-cell">s₂</div>
-                <div class="matrix-cell">s₃</div>
-              </div>
-              <div class="bracket-r">]</div>
-            </div>
-            <span style="font-size: 20px; color: var(--text-dim)">=</span>
-            <div style="display: flex; align-items: center">
-              <div class="bracket-l">[</div>
-              <div
-                class="matrix cols-2"
-                style="grid-template-columns: repeat(1, 40px)"
-              >
-                <div class="matrix-cell g">s₀'</div>
-                <div class="matrix-cell g">s₁'</div>
-                <div class="matrix-cell g">s₂'</div>
-                <div class="matrix-cell g">s₃'</div>
-              </div>
-              <div class="bracket-r">]</div>
-            </div>
-          </div>
-          <div class="theory-text">
-            <p>
-              MixColumns đảm bảo <em>diffusion</em> — mỗi byte đầu ra phụ thuộc
-              vào toàn bộ 4 bytes của cột đầu vào. Kết hợp với ShiftRows, AES
-              đạt được <strong>diffusion hoàn toàn</strong> sau 2 vòng.
-            </p>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="JAVASCRIPT"
+            ><code class="language-javascript">// MixColumns — nhân mỗi cột với ma trận MDS trong GF(2⁸)
+//
+// Ma trận mã hóa:          Ma trận giải mã (nghịch đảo):
+//  ┌ 2  3  1  1 ┐           ┌ 14  11  13   9 ┐
+//  │ 1  2  3  1 │           │  9  14  11  13 │
+//  │ 1  1  2  3 │           │ 13   9  14  11 │
+//  └ 3  1  1  2 ┘           └ 11  13   9  14 ┘
+//                              (14=0x0E, 11=0x0B, 13=0x0D, 9=0x09)
+
+function mixColumn(col) {
+  const [s0, s1, s2, s3] = col;
+  return [
+    gmul(2, s0) ^ gmul(3, s1) ^ s2          ^ s3,
+    s0          ^ gmul(2, s1) ^ gmul(3, s2) ^ s3,
+    s0          ^ s1          ^ gmul(2, s2) ^ gmul(3, s3),
+    gmul(3, s0) ^ s1          ^ s2          ^ gmul(2, s3),
+  ];
+}
+
+function mixColumns(state) {
+  const out = Array.from({ length: 4 }, () => new Array(4));
+  for (let c = 0; c < 4; c++) {
+    const mixed = mixColumn([state[0][c], state[1][c], state[2][c], state[3][c]]);
+    for (let r = 0; r < 4; r++) out[r][c] = mixed[r];
+  }
+  return out;
+}</code></pre>
           </div>
         </div>
 
-        <!-- 8. ADDROUNDKEY -->
+        <!-- ── 08 ── -->
         <div id="addroundkey">
           <div class="section-title">
-            <span>08</span> AddRoundKey — XOR với round key
+            <span>08</span> AddRoundKey — XOR với Round Key
           </div>
           <div class="theory-text">
             <p>
-              <strong>AddRoundKey</strong> là phép XOR bitwise giữa state hiện
-              tại và round key tương ứng (4 words = 16 bytes) từ key schedule.
+              Bước duy nhất phụ thuộc trực tiếp vào khóa bí mật. XOR là tự
+              nghịch đảo — khi giải mã bước này dùng lại hàm mã hóa, không cần
+              hàm ngược.
             </p>
-            <div class="code-block">
-              state[r][c] = state[r][c] ^ roundKey[round][r][c]
-            </div>
-            <p>
-              Đây là bước duy nhất trong AES phụ thuộc trực tiếp vào khóa bí
-              mật. Tính bảo mật của AES phụ thuộc vào sự kết hợp của cả 4 phép
-              biến đổi theo nguyên lý <em>confusion</em> (SubBytes) và
-              <em>diffusion</em>
-              (ShiftRows + MixColumns).
-            </p>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="JAVASCRIPT"
+            ><code class="language-javascript">// AddRoundKey — XOR state với round key tương ứng từ key schedule
+function addRoundKey(state, w, round) {
+  // w[round*4 + c] là word thứ c của round key tương ứng
+  return state.map((row, r) =>
+    row.map((byte, c) => byte ^ w[round * 4 + c][r])
+  );
+}
+
+// Tính chất tự nghịch đảo (involutory):
+//   addRoundKey(addRoundKey(state, w, r), w, r) === state
+// vì:  (a ⊕ k) ⊕ k  =  a   (XOR tự triệt tiêu)
+//
+// → Khi giải mã, sử dụng lại hàm addRoundKey hoàn toàn giống nhau,
+//   chỉ thay đổi thứ tự vòng (Nr → 0 thay vì 0 → Nr)</code></pre>
           </div>
         </div>
 
-        <!-- 9. CBC -->
-        <div id="cbc">
-          <div class="section-title"><span>09</span> Chế độ CBC</div>
+        <!-- ── 09 ── -->
+        <div id="padding">
+          <div class="section-title"><span>09</span> PKCS#7 Padding</div>
           <div class="theory-text">
             <p>
-              <strong>CBC (Cipher Block Chaining)</strong> là chế độ hoạt động
-              cho mã hóa khối. Mỗi block plaintext được XOR với ciphertext của
-              block trước trước khi mã hóa. Block đầu tiên XOR với
-              <strong>IV (Initialization Vector)</strong>.
+              AES xử lý đúng 16 bytes mỗi lần. <strong>PKCS#7</strong> (RFC
+              5652) bổ sung <code>n</code> bytes, mỗi byte có giá trị
+              <code>n</code>, với <code>n = 16 - (len % 16)</code>. Nếu len đã
+              là bội số 16, vẫn thêm đủ 16 bytes giá trị <code>0x10</code>.
             </p>
           </div>
-          <div class="code-block">
-            <span class="cmt">// Mã hóa CBC:</span>
-            C₀ = AES_Encrypt(P₀ ⊕ IV, key) C₁ = AES_Encrypt(P₁ ⊕ C₀, key) Cᵢ =
-            AES_Encrypt(Pᵢ ⊕ Cᵢ₋₁, key)
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="JAVASCRIPT"
+            ><code class="language-javascript">// PKCS#7 Pad — thêm n bytes có giá trị n  (n ∈ [1, 16])
+function pkcs7Pad(data) {
+  const n = 16 - (data.length % 16);
+  return [...data, ...Array(n).fill(n)];
+}
 
-            <span class="cmt">// Giải mã CBC:</span>
-            P₀ = AES_Decrypt(C₀, key) ⊕ IV P₁ = AES_Decrypt(C₁, key) ⊕ C₀ Pᵢ =
-            AES_Decrypt(Cᵢ, key) ⊕ Cᵢ₋₁
+// PKCS#7 Unpad — đọc byte cuối, kiểm tra tính hợp lệ rồi cắt
+function pkcs7Unpad(data) {
+  const n = data[data.length - 1];
+  if (n < 1 || n > 16) throw new Error('Invalid PKCS#7 padding');
+  // Kiểm tra n bytes cuối đều có giá trị n
+  for (let i = data.length - n; i < data.length; i++) {
+    if (data[i] !== n) throw new Error('Padding bytes mismatch');
+  }
+  return data.slice(0, data.length - n);
+}
+
+// Ví dụ — "Hello" (5 bytes) → n = 11 → padding 0x0B:
+// 48 65 6C 6C 6F  0B 0B 0B 0B 0B 0B 0B 0B 0B 0B 0B
+//
+// "Two One Nine Two" (16 bytes) → n = 16 → padding 0x10:
+// 54 77 6F ... 54 77 6F  10 10 10 10 10 10 10 10 10 10 10 10 10 10 10 10</code></pre>
+          </div>
+          <div class="alert alert-warn">
+            ⚠️ Padding chỉ dùng với <strong>ECB</strong> và
+            <strong>CBC</strong>. Các chế độ CFB, OFB, CTR hoạt động như stream
+            cipher — XOR trực tiếp theo độ dài thực tế, không cần padding.
+          </div>
+        </div>
+
+        <!-- ── 10 ── -->
+        <div id="ecb">
+          <div class="section-title">
+            <span>10</span> Chế độ ECB — Electronic Codebook
+          </div>
+          <div class="theory-text">
+            <p>
+              Chế độ đơn giản nhất: mỗi block 16 bytes mã hóa/giải mã
+              <em>độc lập</em> với cùng khóa.
+            </p>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="PSEUDOCODE"
+            ><code class="language-plaintext">Mã hóa ECB:
+    Cᵢ = AES_Encrypt(Pᵢ, key)        ← mỗi block độc lập, song song được
+
+Giải mã ECB:
+    Pᵢ = AES_Decrypt(Cᵢ, key)        ← mỗi block độc lập, song song được
+
+Điểm yếu chết người:
+    P₁ == P₂  →  C₁ == C₂            ← lộ hoàn toàn pattern dữ liệu!</code></pre>
+          </div>
+          <div class="alert alert-danger">
+            🚨 ECB <strong>KHÔNG AN TOÀN</strong> cho dữ liệu thực có cấu trúc
+            lặp. Ảnh bitmap mã hóa bằng ECB vẫn nhận ra hình dạng. Chỉ dùng cho
+            mục đích học thuật.
+          </div>
+          <div class="diagram-flow">
+            <div class="df-block">P₀</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block enc">AES_E(k)</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block out">C₀</div>
+            <div
+              class="df-arrow"
+              style="padding: 0 12px; color: var(--text-muted)"
+            >
+              ║
+            </div>
+            <div class="df-block">P₁</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block enc">AES_E(k)</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block out">C₁</div>
+          </div>
+        </div>
+
+        <!-- ── 11 ── -->
+        <div id="cbc">
+          <div class="section-title">
+            <span>11</span> Chế độ CBC — Cipher Block Chaining
+          </div>
+          <div class="theory-text">
+            <p>
+              Mỗi block plaintext được XOR với ciphertext của block trước rồi
+              mới mã hóa, ẩn hoàn toàn pattern dữ liệu. Block đầu tiên XOR với
+              <strong>IV</strong>.
+            </p>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="PSEUDOCODE"
+            ><code class="language-plaintext">Mã hóa CBC (phải tuần tự — không song song được):
+    C₀ = AES_Encrypt(P₀ ⊕ IV,    key)
+    C₁ = AES_Encrypt(P₁ ⊕ C₀,   key)
+    Cᵢ = AES_Encrypt(Pᵢ ⊕ Cᵢ₋₁, key)
+
+Giải mã CBC (có thể song song vì Cᵢ₋₁ đã biết):
+    P₀ = AES_Decrypt(C₀, key) ⊕ IV
+    P₁ = AES_Decrypt(C₁, key) ⊕ C₀
+    Pᵢ = AES_Decrypt(Cᵢ, key) ⊕ Cᵢ₋₁
+
+Tính chất lỗi:
+    Lỗi 1 ciphertext block → ảnh hưởng đúng 2 plaintext block kề nhau</code></pre>
           </div>
           <div class="alert alert-warn">
             ⚠️ IV phải <strong>ngẫu nhiên và duy nhất</strong> cho mỗi lần mã
-            hóa. IV không cần bí mật nhưng phải được gửi kèm ciphertext để giải
-            mã.
+            hóa. IV không cần bí mật nhưng phải gửi kèm ciphertext.
+          </div>
+          <div class="diagram-flow">
+            <div class="df-block">IV</div>
+            <div class="df-arrow">→⊕←</div>
+            <div class="df-block">P₀</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block enc">AES_E</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block out">C₀</div>
+            <div class="df-arrow">→⊕←</div>
+            <div class="df-block">P₁</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block enc">AES_E</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block out">C₁ …</div>
           </div>
         </div>
 
-        <!-- 10. SECURITY -->
-        <div id="security">
-          <div class="section-title"><span>10</span> Độ an toàn</div>
+        <!-- ── 12 ── -->
+        <div id="cfb">
+          <div class="section-title">
+            <span>12</span> Chế độ CFB — Cipher Feedback
+          </div>
           <div class="theory-text">
             <p>
-              AES-128 có <strong>2¹²⁸ ≈ 3.4 × 10³⁸</strong> khóa có thể — không
-              thể brute-force bằng bất kỳ máy tính nào trong tương lai gần.
-              AES-256 cung cấp mức bảo mật 256-bit, phù hợp cho dữ liệu tuyệt
-              mật.
+              Biến AES thành stream cipher: mã hóa shift register, XOR với
+              plaintext; ciphertext được đưa lại làm input tiếp theo (feedback).
+              Chỉ cần <em>AES_Encrypt</em> — không dùng AES_Decrypt.
             </p>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="PSEUDOCODE"
+            ><code class="language-plaintext">Mã hóa CFB (tuần tự — ciphertext làm feedback):
+    O₀ = AES_Encrypt(IV,  key)
+    C₀ = P₀ ⊕ O₀
+
+    O₁ = AES_Encrypt(C₀, key)      ← C₀ (ciphertext) làm input tiếp theo
+    C₁ = P₁ ⊕ O₁
+
+    Oᵢ = AES_Encrypt(Cᵢ₋₁, key)
+    Cᵢ = Pᵢ ⊕ Oᵢ
+
+Giải mã CFB (có thể song song — Oᵢ chỉ phụ thuộc ciphertext):
+    Oᵢ = AES_Encrypt(Cᵢ₋₁, key)  ← vẫn dùng AES_Encrypt, không phải Decrypt
+    Pᵢ = Cᵢ ⊕ Oᵢ
+
+Tính chất:
+    • Không cần padding (stream cipher)
+    • Lỗi 1 bit ciphertext → ảnh hưởng 2 block plaintext liên tiếp</code></pre>
+          </div>
+          <div class="diagram-flow">
+            <div class="df-block">IV</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block enc">AES_E</div>
+            <div class="df-arrow">→⊕←</div>
+            <div class="df-block">P₀</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block out">C₀</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block enc">AES_E</div>
+            <div class="df-arrow">→⊕←</div>
+            <div class="df-block">P₁</div>
+            <div class="df-arrow">→</div>
+            <div class="df-block out">C₁ …</div>
+          </div>
+        </div>
+
+        <!-- ── 13 ── -->
+        <div id="ofb">
+          <div class="section-title">
+            <span>13</span> Chế độ OFB — Output Feedback
+          </div>
+          <div class="theory-text">
             <p>
-              Cuộc tấn công tốt nhất đã biết vào AES là
-              <em>biclique cryptanalysis</em>
-              (2011), nhưng chỉ giảm độ phức tạp xuống khoảng 2¹²⁶·¹ — vẫn hoàn
-              toàn không khả thi về mặt thực tế.
+              Keystream hoàn toàn độc lập với dữ liệu — feedback là
+              <em>output của AES</em> (không phải ciphertext). Keystream có thể
+              tính trước khi chưa có plaintext.
             </p>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="PSEUDOCODE"
+            ><code class="language-plaintext">Tạo keystream OFB (chỉ phụ thuộc key và IV — tính trước được):
+    K₀ = AES_Encrypt(IV,  key)
+    K₁ = AES_Encrypt(K₀, key)      ← output của AES làm feedback (khác CFB!)
+    K₂ = AES_Encrypt(K₁, key)
+    Kᵢ = AES_Encrypt(Kᵢ₋₁, key)
+
+Mã hóa và giải mã hoàn toàn đối xứng (chỉ là XOR):
+    Cᵢ = Pᵢ ⊕ Kᵢ
+    Pᵢ = Cᵢ ⊕ Kᵢ
+
+Tính chất:
+    • Lỗi 1 bit ciphertext → chỉ ảnh hưởng đúng 1 bit plaintext
+    • Keystream phải tính tuần tự (không song song)
+    ⚠ Tái sử dụng (IV, key): biết P₀ → tính được P₀' của thông điệp khác!</code></pre>
+          </div>
+          <div class="alert alert-warn">
+            ⚠️ <strong>Tuyệt đối không tái sử dụng (IV, key)</strong> trong OFB.
+            Keystream không thay đổi → two-time pad attack.
+          </div>
+        </div>
+
+        <!-- ── 14 ── -->
+        <div id="ctr">
+          <div class="section-title">
+            <span>14</span> Chế độ CTR — Counter Mode
+          </div>
+          <div class="theory-text">
             <p>
-              AES được sử dụng rộng rãi trong: TLS/HTTPS, VPN, mã hóa ổ đĩa
-              (BitLocker, FileVault), Wi-Fi (WPA2/WPA3), và hầu hết các ứng dụng
-              bảo mật hiện đại.
+              Mã hóa một counter tăng dần và XOR với dữ liệu. Song song hóa hoàn
+              toàn, hỗ trợ random access — lựa chọn hàng đầu trong TLS 1.3,
+              QUIC, SSH.
             </p>
+          </div>
+          <div class="code-wrap">
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+            <pre
+              data-lang="JAVASCRIPT"
+            ><code class="language-javascript">// CTR — Counter Mode
+// Counter block layout: [ nonce (8 bytes) | counter (8 bytes, big-endian) ]
+
+/**
+ * Mã hóa / giải mã CTR (hoàn toàn đối xứng)
+ * @param {number[]} data  - plaintext hoặc ciphertext
+ * @param {number[]} key   - khóa AES (16|24|32 bytes)
+ * @param {number[]} nonce - 8 bytes ngẫu nhiên, duy nhất cho mỗi message
+ */
+function ctrCrypt(data, key, nonce) {
+  const counterBlock = [...nonce, 0, 0, 0, 0, 0, 0, 0, 0]; // 16 bytes
+
+  return data.map((byte, i) => {
+    if (i % 16 === 0 && i > 0) {
+      // Tăng counter (big-endian, 8 bytes cuối)
+      for (let j = 15; j >= 8; j--) {
+        if (++counterBlock[j] !== 0) break; // carry
+      }
+    }
+    // Lấy byte keystream tương ứng (chỉ mã hóa block khi cần)
+    const blockIdx  = Math.floor(i / 16);
+    const byteInBlk = i % 16;
+    const ksBlock   = AES_Encrypt(counterBlock, key);
+    return byte ^ ksBlock[byteInBlk];
+  });
+}
+
+// Random access — giải mã block thứ N không cần giải các block trước:
+//   counterBlock[8..15] = N
+//   keystream_N = AES_Encrypt(counterBlock, key)
+//   plaintext_N = ciphertext_N XOR keystream_N</code></pre>
+          </div>
+          <div class="alert alert-info">
+            ℹ️ CTR kết hợp với Galois Message Authentication →
+            <strong>AES-GCM</strong>: mã hóa xác thực (AEAD) chuẩn của TLS 1.3,
+            đảm bảo cả bảo mật lẫn toàn vẹn dữ liệu.
+          </div>
+        </div>
+
+        <!-- ── 15 ── -->
+        <div id="modes-compare">
+          <div class="section-title">
+            <span>15</span> So sánh 5 chế độ hoạt động
+          </div>
+          <div class="mode-compare">
+            <div class="mode-card">
+              <div class="mode-card-head">
+                <span class="mode-badge ecb">ECB</span
+                ><span class="mode-card-name">Electronic Codebook</span>
+              </div>
+              <p>Mỗi block độc lập. Lộ pattern — không an toàn.</p>
+              <div class="prop-list">
+                <span class="prop-tag">IV: Không</span
+                ><span class="prop-tag">Padding: PKCS#7</span>
+                <span class="prop-tag yes">Song song ✓</span
+                ><span class="prop-tag no">Bảo mật ✗</span>
+              </div>
+            </div>
+            <div class="mode-card">
+              <div class="mode-card-head">
+                <span class="mode-badge cbc">CBC</span
+                ><span class="mode-card-name">Cipher Block Chaining</span>
+              </div>
+              <p>XOR với ciphertext trước. Ẩn pattern tốt.</p>
+              <div class="prop-list">
+                <span class="prop-tag">IV: Ngẫu nhiên</span
+                ><span class="prop-tag">Padding: PKCS#7</span>
+                <span class="prop-tag no">Enc tuần tự ✗</span
+                ><span class="prop-tag yes">Dec song song ✓</span>
+              </div>
+            </div>
+            <div class="mode-card">
+              <div class="mode-card-head">
+                <span class="mode-badge cfb">CFB</span
+                ><span class="mode-card-name">Cipher Feedback</span>
+              </div>
+              <p>Stream cipher — ciphertext làm feedback.</p>
+              <div class="prop-list">
+                <span class="prop-tag">IV: Có</span
+                ><span class="prop-tag yes">Không padding ✓</span>
+                <span class="prop-tag no">Enc tuần tự ✗</span
+                ><span class="prop-tag yes">Dec song song ✓</span>
+              </div>
+            </div>
+            <div class="mode-card">
+              <div class="mode-card-head">
+                <span class="mode-badge ofb">OFB</span
+                ><span class="mode-card-name">Output Feedback</span>
+              </div>
+              <p>Keystream độc lập với data — tính trước được.</p>
+              <div class="prop-list">
+                <span class="prop-tag">IV: Unique</span
+                ><span class="prop-tag yes">Không padding ✓</span>
+                <span class="prop-tag no">Keystream tuần tự ✗</span
+                ><span class="prop-tag yes">Lỗi cô lập ✓</span>
+              </div>
+            </div>
+            <div class="mode-card">
+              <div class="mode-card-head">
+                <span class="mode-badge ctr">CTR</span
+                ><span class="mode-card-name">Counter Mode</span>
+              </div>
+              <p>Counter tăng dần. Random access. Nhanh nhất.</p>
+              <div class="prop-list">
+                <span class="prop-tag">Nonce: Unique</span
+                ><span class="prop-tag yes">Không padding ✓</span>
+                <span class="prop-tag yes">Song song hoàn toàn ✓</span
+                ><span class="prop-tag yes">Random access ✓</span>
+              </div>
+            </div>
+          </div>
+          <table class="security-table" style="margin-top: 16px">
+            <thead>
+              <tr>
+                <th>Chế độ</th>
+                <th>Enc song song</th>
+                <th>Dec song song</th>
+                <th>Padding</th>
+                <th>IV / Nonce</th>
+                <th>Độ an toàn</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ECB</td>
+                <td class="tag-safe">✓</td>
+                <td class="tag-safe">✓</td>
+                <td>PKCS#7</td>
+                <td>Không</td>
+                <td class="tag-bad">Kém ✗</td>
+              </tr>
+              <tr>
+                <td>CBC</td>
+                <td class="tag-bad">✗</td>
+                <td class="tag-safe">✓</td>
+                <td>PKCS#7</td>
+                <td>IV ngẫu nhiên</td>
+                <td class="tag-safe">Tốt ✓</td>
+              </tr>
+              <tr>
+                <td>CFB</td>
+                <td class="tag-bad">✗</td>
+                <td class="tag-safe">✓</td>
+                <td>Không</td>
+                <td>IV</td>
+                <td class="tag-safe">Tốt ✓</td>
+              </tr>
+              <tr>
+                <td>OFB</td>
+                <td class="tag-bad">✗</td>
+                <td class="tag-bad">✗</td>
+                <td>Không</td>
+                <td>IV unique</td>
+                <td class="tag-safe">Tốt ✓</td>
+              </tr>
+              <tr>
+                <td>CTR</td>
+                <td class="tag-safe">✓</td>
+                <td class="tag-safe">✓</td>
+                <td>Không</td>
+                <td>Nonce unique</td>
+                <td class="tag-safe">Tốt ✓</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ── 16 ── -->
+        <div id="security">
+          <div class="section-title">
+            <span>16</span> Độ an toàn và ứng dụng thực tế
+          </div>
+          <div class="theory-text">
+            <p>
+              AES-128 có <strong>2¹²⁸ ≈ 3.4×10³⁸</strong> khóa — không thể
+              brute-force. Cuộc tấn công tốt nhất đã biết là
+              <em>biclique cryptanalysis</em> (2011), chỉ đạt ~2¹²⁶·¹ — hoàn
+              toàn không khả thi trong thực tế.
+            </p>
+            <table class="security-table">
+              <thead>
+                <tr>
+                  <th>Ứng dụng</th>
+                  <th>Phiên bản</th>
+                  <th>Chế độ</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>TLS 1.3 / HTTPS</td>
+                  <td>AES-128/256</td>
+                  <td>GCM</td>
+                  <td>Authenticated encryption (AEAD)</td>
+                </tr>
+                <tr>
+                  <td>WiFi WPA2/WPA3</td>
+                  <td>AES-128</td>
+                  <td>CCM / GCMP</td>
+                  <td>CCMP / GCMP protocol</td>
+                </tr>
+                <tr>
+                  <td>BitLocker</td>
+                  <td>AES-128/256</td>
+                  <td>XTS</td>
+                  <td>Full-disk encryption</td>
+                </tr>
+                <tr>
+                  <td>Signal / WhatsApp</td>
+                  <td>AES-256</td>
+                  <td>CBC / CTR</td>
+                  <td>Message encryption</td>
+                </tr>
+                <tr>
+                  <td>SSH</td>
+                  <td>AES-128/256</td>
+                  <td>CTR / GCM</td>
+                  <td>Transport layer security</td>
+                </tr>
+                <tr>
+                  <td>Dự án này</td>
+                  <td>AES-128/192/256</td>
+                  <td>ECB/CBC/CFB/OFB/CTR</td>
+                  <td>Mục đích học thuật</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="alert alert-success">
+              ✅ NIST công nhận AES bảo mật đến ít nhất 2030+ (AES-128) và dài
+              hạn hơn (AES-256). Không có cuộc tấn công thực tế nào vào AES đúng
+              chuẩn được công bố.
+            </div>
           </div>
         </div>
       </main>
@@ -761,30 +1490,91 @@
 
     <footer class="footer">
       <span>© 2025 — Học viện Kỹ thuật Mật mã — Môn CSATBMTT</span>
-      <span>NIST FIPS 197 — AES Specification</span>
+      <span>AES Theory — FIPS PUB 197 &amp; NIST SP 800-38A</span>
     </footer>
 
     <script>
-      // Highlight sidebar link on scroll
-      const headings = document.querySelectorAll("[id]");
-      const links = document.querySelectorAll(".sidebar-nav a");
+      // ── Khởi tạo Highlight.js
+      hljs.configure({ ignoreUnescapedHTML: true });
+      hljs.highlightAll();
 
-      const observer = new IntersectionObserver(
+      // ── Copy button
+      function copyCode(btn) {
+        const code = btn.closest(".code-wrap").querySelector("code");
+        navigator.clipboard.writeText(code.innerText).then(() => {
+          btn.textContent = "COPIED";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "COPY";
+            btn.classList.remove("copied");
+          }, 1800);
+        });
+      }
+
+      // ── Render S-Box 16×16
+      const SBOX = [
+        0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,
+        0xfe, 0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,
+        0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26,
+        0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2,
+        0xeb, 0x27, 0xb2, 0x75, 0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0,
+        0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84, 0x53, 0xd1, 0x00, 0xed,
+        0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+        0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f,
+        0x50, 0x3c, 0x9f, 0xa8, 0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5,
+        0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2, 0xcd, 0x0c, 0x13, 0xec,
+        0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+        0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14,
+        0xde, 0x5e, 0x0b, 0xdb, 0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c,
+        0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79, 0xe7, 0xc8, 0x37, 0x6d,
+        0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+        0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f,
+        0x4b, 0xbd, 0x8b, 0x8a, 0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e,
+        0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e, 0xe1, 0xf8, 0x98, 0x11,
+        0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f,
+        0xb0, 0x54, 0xbb, 0x16,
+      ];
+      const HL = new Set([0x00, 0x53, 0x63, 0xed, 0xff, 0x7c]);
+      const cont = document.getElementById("sbox-container");
+      let h =
+        '<div style="display:grid;grid-template-columns:26px repeat(16,1fr);gap:2px;margin-bottom:4px">';
+      h +=
+        '<div style="font-family:var(--font-mono);font-size:8px;color:var(--text-muted);display:flex;align-items:center;justify-content:center">xy</div>';
+      for (let c = 0; c < 16; c++)
+        h += `<div style="font-family:var(--font-mono);font-size:8px;color:var(--cyan);text-align:center">_${c.toString(16).toUpperCase()}</div>`;
+      h += "</div>";
+      for (let r = 0; r < 16; r++) {
+        h +=
+          '<div style="display:grid;grid-template-columns:26px repeat(16,1fr);gap:2px;margin-bottom:2px">';
+        h += `<div style="font-family:var(--font-mono);font-size:8px;color:var(--cyan);display:flex;align-items:center;justify-content:center">${r.toString(16).toUpperCase()}_</div>`;
+        for (let c = 0; c < 16; c++) {
+          const v = SBOX[r * 16 + c];
+          h += `<div class="sbox-cell${HL.has(v) ? " highlight" : ""}">${v.toString(16).padStart(2, "0").toUpperCase()}</div>`;
+        }
+        h += "</div>";
+      }
+      cont.innerHTML = h;
+
+      // ── Sidebar active-on-scroll
+      const obs = new IntersectionObserver(
         (entries) => {
           entries.forEach((e) => {
             if (e.isIntersecting) {
-              links.forEach((l) => l.classList.remove("active"));
-              const link = document.querySelector(
+              document
+                .querySelectorAll(".sidebar-nav a")
+                .forEach((a) => a.classList.remove("active"));
+              const lnk = document.querySelector(
                 `.sidebar-nav a[href="#${e.target.id}"]`,
               );
-              if (link) link.classList.add("active");
+              if (lnk) lnk.classList.add("active");
             }
           });
         },
-        { threshold: 0.4 },
+        { rootMargin: "-15% 0px -70% 0px" },
       );
-
-      headings.forEach((h) => observer.observe(h));
+      document.querySelectorAll("[id]").forEach((s) => obs.observe(s));
     </script>
   </body>
 </html>

@@ -1359,3 +1359,80 @@ textarea:focus {
     padding: 20px 16px 40px;
   }
 }
+
+/* ═══════════════════════════════════════════
+   SCREEN GUARD — force landscape / larger device
+   ═══════════════════════════════════════════ */
+@media (max-width: 900px) and (orientation: portrait) {
+  html,
+  body {
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+
+  body > * {
+    visibility: hidden !important;
+  }
+
+  body::after {
+    content: "Màn hình quá nhỏ để sử dụng.\A\A Vui lòng xoay ngang thiết bị (landscape) để tiếp tục.\A Nếu vẫn quá nhỏ, hãy dùng thiết bị có màn hình lớn hơn.";
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: pre-line;
+    padding: 24px;
+    background: radial-gradient(
+      circle at top,
+      #0b1624 0%,
+      #04080c 58%,
+      #020407 100%
+    );
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.9;
+    letter-spacing: 1px;
+    visibility: visible !important;
+  }
+}
+
+@media (max-width: 700px) and (orientation: landscape) {
+  html,
+  body {
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+
+  body > * {
+    visibility: hidden !important;
+  }
+
+  body::after {
+    content: "Kích thước màn hình quá nhỏ.\A\A Vui lòng dùng thiết bị có màn hình lớn hơn để sử dụng đầy đủ tính năng.";
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: pre-line;
+    padding: 24px;
+    background: radial-gradient(
+      circle at top,
+      #0b1624 0%,
+      #04080c 58%,
+      #020407 100%
+    );
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.9;
+    letter-spacing: 1px;
+    visibility: visible !important;
+  }
+}

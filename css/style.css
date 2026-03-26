@@ -442,7 +442,7 @@ textarea:focus {
 .btn-primary {
   flex: 2;
   background: var(--cyan);
-  color: #030810;
+  color: #ffffff;
 }
 .btn-primary:hover {
   background: #33deff;
@@ -1147,7 +1147,7 @@ textarea:focus {
 .btn-green {
   flex: 2;
   background: var(--green);
-  color: #030810;
+  color: #ffffff;
   padding: 13px 24px;
   border: none;
   border-radius: var(--radius);

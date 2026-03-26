@@ -34,7 +34,7 @@
         border-right: none;
       }
       .tab-btn.active {
-        color: var(--cyan);
+        color: #fff;
         background: rgba(0, 212, 255, 0.07);
         border-bottom: 2px solid var(--cyan);
       }
@@ -53,15 +53,21 @@
       .hex-dump {
         font-family: var(--font-mono);
         font-size: 11px;
-        background: rgba(0, 0, 0, 0.5);
+        background: var(--surface-soft);
         border: 1px solid var(--border);
         border-radius: var(--radius);
         padding: 12px;
         white-space: pre;
         overflow-x: auto;
-        color: var(--text-dim);
+        color: var(--dim);
         max-height: 140px;
         overflow-y: auto;
+      }
+
+      :root[data-theme="light"] .hex-dump {
+        background: #edf4fa;
+        border-color: #cdddea;
+        color: #42657c;
       }
 
       .side-info {

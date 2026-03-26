@@ -4,6 +4,10 @@
   --bg: #04080c;
   --surface: #080f18;
   --surface2: #0c1825;
+  --surface-soft: rgba(0, 0, 0, 0.4);
+  --surface-strong: rgba(0, 0, 0, 0.55);
+  --surface-hover: rgba(255, 255, 255, 0.03);
+  --status-bg: rgba(0, 0, 0, 0.3);
   --border: #0f2030;
   --border2: #163045;
   --cyan: #00d4ff;
@@ -11,11 +15,11 @@
   --green-dim: rgba(0, 232, 154, 0.4);
   --red: #ff4060;
   --amber: #ffb300;
-  --text: #b8d0de;
-  --text-dim: #b8d0de;
-  --text-muted: #2a3f50;
-  --dim: #b8d0de;
-  --dim2: #b8d0de;
+  --text: #d5e7f3;
+  --text-dim: #b7cfde;
+  --text-muted: #6d889a;
+  --dim: #a9c4d5;
+  --dim2: #8ba7bc;
   --white: #e8f4ff;
   --glow-cyan: 0 0 24px rgba(0, 212, 255, 0.28);
   --glow-green: 0 0 16px rgba(0, 232, 154, 0.25);
@@ -26,6 +30,46 @@
   --font-mono: "Share Tech Mono", monospace;
   --font-head: "Barlow", sans-serif;
   --font-sans: "Barlow", sans-serif;
+  --text-weight: 500;
+  --grid-line: rgba(0, 212, 255, 0.025);
+  --nav-bg: rgba(4, 8, 12, 0.92);
+  --nav-title: #ffffff;
+  --card-title: #ffffff;
+  --strong-text: #ffffff;
+  --output-ok: rgba(0, 232, 154, 0.25);
+  --output-err: rgba(255, 64, 96, 0.25);
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f8fc;
+  --surface: #ffffff;
+  --surface2: #eef5fb;
+  --surface-soft: rgba(22, 42, 58, 0.06);
+  --surface-strong: rgba(22, 42, 58, 0.08);
+  --surface-hover: rgba(0, 114, 166, 0.08);
+  --status-bg: rgba(22, 42, 58, 0.05);
+  --border: #d1e0ed;
+  --border2: #7ba7c4;
+  --cyan: #0076b6;
+  --green: #008c63;
+  --green-dim: rgba(0, 140, 99, 0.25);
+  --red: #c43446;
+  --amber: #b87500;
+  --text: #0f2d40;
+  --text-dim: #23455c;
+  --text-muted: #5a778d;
+  --dim: #2f5269;
+  --dim2: #4c6d83;
+  --white: #0f293b;
+  --glow-cyan: 0 0 18px rgba(0, 118, 182, 0.2);
+  --glow-green: 0 0 14px rgba(0, 140, 99, 0.2);
+  --grid-line: rgba(0, 118, 182, 0.08);
+  --nav-bg: rgba(243, 248, 252, 0.92);
+  --nav-title: #113249;
+  --card-title: #123044;
+  --strong-text: #123044;
+  --output-ok: rgba(0, 140, 99, 0.2);
+  --output-err: rgba(196, 52, 70, 0.22);
 }
 
 *,
@@ -43,9 +87,12 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
+  font-weight: var(--text-weight);
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* GLOBAL SCROLLBAR THEME */
@@ -65,7 +112,7 @@ html {
 }
 
 *::-webkit-scrollbar-track {
-  background: rgba(8, 15, 24, 0.95);
+  background: var(--surface);
   border: 1px solid var(--border);
 }
 
@@ -75,7 +122,7 @@ html {
     rgba(0, 212, 255, 0.55),
     rgba(0, 232, 154, 0.45)
   );
-  border: 2px solid rgba(8, 15, 24, 0.95);
+  border: 2px solid var(--surface);
   border-radius: 999px;
 }
 
@@ -96,7 +143,7 @@ html {
 }
 
 *::-webkit-scrollbar-corner {
-  background: rgba(8, 15, 24, 0.95);
+  background: var(--surface);
 }
 
 body::before {
@@ -105,8 +152,8 @@ body::before {
   inset: 0;
   z-index: 0;
   background-image:
-    linear-gradient(rgba(0, 212, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
 }
@@ -317,7 +364,7 @@ body::before {
 input[type="text"],
 textarea {
   width: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--surface-strong);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -347,7 +394,7 @@ textarea:focus {
 .key-opt {
   flex: 1;
   padding: 10px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: var(--mono);
@@ -451,7 +498,7 @@ textarea:focus {
   background: rgba(0, 232, 154, 0.1);
 }
 .output-box {
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--surface-strong);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 13px 16px;
@@ -461,10 +508,11 @@ textarea:focus {
   word-break: break-all;
   min-height: 46px;
   color: var(--text);
+  font-weight: 500;
   transition: border-color 0.3s;
 }
 .output-box.has-value {
-  border-color: rgba(0, 232, 154, 0.25);
+  border-color: var(--output-ok);
   color: var(--white);
 }
 .output-box.empty {
@@ -497,7 +545,7 @@ textarea:focus {
   min-height: 22px;
   padding: 6px 10px;
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--status-bg);
   border: 1px solid var(--border);
   transition: all 0.3s;
 }
@@ -579,7 +627,7 @@ textarea:focus {
   align-items: center;
   gap: 12px;
   padding: 9px 13px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: 3px;
   font-family: var(--mono);
@@ -701,8 +749,8 @@ textarea:focus {
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(0, 212, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
@@ -716,7 +764,7 @@ textarea:focus {
   justify-content: space-between;
   padding: 0 24px;
   height: 56px;
-  background: rgba(4, 8, 12, 0.92);
+  background: var(--nav-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -745,7 +793,7 @@ textarea:focus {
   font-family: var(--font-head);
   font-size: 14px;
   font-weight: 800;
-  color: #fff;
+  color: var(--nav-title);
   letter-spacing: 3px;
   line-height: 1;
 }
@@ -778,7 +826,7 @@ textarea:focus {
 }
 .nav-links li a:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-hover);
 }
 .nav-links li a.active {
   color: var(--cyan);
@@ -841,7 +889,7 @@ textarea:focus {
 }
 .sidebar-nav li a:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-hover);
 }
 .sidebar-nav li a.active {
   color: var(--cyan);
@@ -875,7 +923,7 @@ textarea:focus {
   font-family: var(--font-head);
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   font-weight: 800;
-  color: #fff;
+  color: var(--strong-text);
   line-height: 1.15;
   letter-spacing: 2px;
 }
@@ -917,7 +965,7 @@ textarea:focus {
   font-family: var(--font-head);
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color: var(--card-title);
   margin-bottom: 16px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
@@ -990,7 +1038,7 @@ textarea:focus {
 .key-selector .key-opt {
   flex: 1;
   padding: 10px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: var(--font-mono);
@@ -1022,7 +1070,7 @@ textarea:focus {
 
 /* ── OUTPUT BOX ── */
 .output-box {
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--surface-strong);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 13px 16px;
@@ -1036,11 +1084,11 @@ textarea:focus {
   position: relative;
 }
 .output-box.ok {
-  border-color: rgba(0, 232, 154, 0.25);
+  border-color: var(--output-ok);
   color: var(--white);
 }
 .output-box.err {
-  border-color: rgba(255, 64, 96, 0.25);
+  border-color: var(--output-err);
   color: var(--red);
 }
 .output-box .copy-btn {
@@ -1060,7 +1108,7 @@ textarea:focus {
   margin-top: 14px;
   padding: 6px 10px;
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--status-bg);
   border: 1px solid var(--border);
   transition: all 0.3s;
 }
@@ -1128,7 +1176,7 @@ textarea:focus {
 
 /* ── CODE BLOCK ── */
 .code-block {
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--surface-strong);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px 20px;
@@ -1136,6 +1184,7 @@ textarea:focus {
   font-size: 12px;
   line-height: 1.9;
   color: var(--text);
+  font-weight: 500;
   overflow-x: auto;
   white-space: pre;
   margin: 14px 0;
@@ -1167,7 +1216,7 @@ textarea:focus {
   margin-bottom: 12px;
 }
 .theory-text strong {
-  color: #fff;
+  color: var(--strong-text);
 }
 .theory-text em {
   color: var(--cyan);
@@ -1202,14 +1251,89 @@ textarea:focus {
   color: var(--text);
 }
 .alert strong {
-  color: #fff;
+  color: var(--strong-text);
 }
 .alert code {
   font-family: var(--font-mono);
   font-size: 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-soft);
   padding: 1px 5px;
   border-radius: 3px;
+}
+
+/* ── THEME TOGGLE ── */
+.theme-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-1px);
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+/* Keep source/theory code blocks readable in light mode. */
+:root[data-theme="light"] pre code.hljs,
+:root[data-theme="light"] .source-body pre code.hljs {
+  background: #f4f8fc !important;
+  color: #16364c !important;
+  border-color: #d1e0ed !important;
+}
+
+:root[data-theme="light"] .source-body pre[data-lang]::before {
+  background: #e7f0f8 !important;
+  color: #35566f !important;
+}
+
+:root[data-theme="light"] .code-block .kw {
+  color: #245f8b;
+}
+
+:root[data-theme="light"] .code-block .fn {
+  color: #7a4e0c;
+}
+
+:root[data-theme="light"] .code-block .str {
+  color: #0d7a55;
+}
+
+:root[data-theme="light"] .code-block .cmt {
+  color: #5d6f7e;
+}
+
+:root[data-theme="light"] .code-block .num {
+  color: #8f3f61;
+}
+
+/* Keep inline white text readable on light mode pages. */
+:root[data-theme="light"] [style*="color:#fff"],
+:root[data-theme="light"] [style*="color: #fff"],
+:root[data-theme="light"] [style*="color:white"],
+:root[data-theme="light"] [style*="color: white"] {
+  color: var(--strong-text) !important;
 }
 
 /* ── PROGRESS BAR ── */

@@ -43,7 +43,7 @@
       }
 
       .source-viewer {
-        background: rgba(0, 0, 0, 0.6);
+        background: var(--surface-soft);
         border: 1px solid var(--border);
         border-radius: var(--radius-lg);
         overflow: hidden;
@@ -159,6 +159,23 @@
       .copy-btn.copied {
         border-color: var(--green);
         color: var(--green);
+      }
+
+      :root[data-theme="light"] .source-body pre code.hljs {
+        background: #f4f8fc !important;
+        color: #2b536b !important;
+        border-color: #d1e0ed !important;
+      }
+
+      :root[data-theme="light"] .source-body pre[data-lang]::before {
+        background: #e6eef6;
+        color: #3f6078;
+        border: 1px solid #d1e0ed;
+      }
+
+      :root[data-theme="light"] .copy-btn {
+        background: #eef5fb;
+        color: #3f6078;
       }
     </style>
   </head>

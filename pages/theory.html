@@ -88,6 +88,18 @@
         color: #c8d3e6 !important;
       }
 
+      :root[data-theme="light"] pre code.hljs {
+        background: #f4f8fc !important;
+        color: #2b536b !important;
+        border-color: #d1e0ed !important;
+      }
+
+      :root[data-theme="light"] pre[data-lang]::before {
+        background: #e6eef6;
+        color: #3f6078;
+        border: 1px solid #d1e0ed;
+      }
+
       /* Copy button */
       .code-wrap {
         position: relative;
@@ -117,6 +129,11 @@
         color: var(--green);
       }
 
+      :root[data-theme="light"] .copy-btn {
+        background: #eef5fb;
+        color: #3f6078;
+      }
+
       /* ══════════════════════════════════════════
          Page-specific styles
       ══════════════════════════════════════════ */
@@ -143,10 +160,12 @@
         font-family: var(--font-head);
         font-size: 18px;
         font-weight: 800;
-        color: #fff;
+        color: var(--strong-text);
         margin: 32px 0 16px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border);
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
         display: flex;
         align-items: center;
         gap: 12px;
@@ -198,6 +217,8 @@
         border-collapse: collapse;
         margin: 14px 0;
         font-size: 13px;
+        background: var(--surface);
+        border: 1px solid var(--border);
       }
       .keybits-table th {
         background: var(--surface2);
@@ -213,9 +234,13 @@
         padding: 8px 12px;
         border: 1px solid var(--border);
         color: var(--text-dim);
+        background: var(--surface-soft);
+      }
+      .keybits-table tbody tr:nth-child(even) td {
+        background: var(--surface2);
       }
       .keybits-table tr:hover td {
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(0, 212, 255, 0.08);
       }
 
       .matrix-wrap {
@@ -386,7 +411,7 @@
       .mode-card-name {
         font-size: 13px;
         font-weight: 600;
-        color: #fff;
+        color: var(--strong-text);
       }
       .mode-card p {
         font-size: 12px;
@@ -454,6 +479,8 @@
         border-collapse: collapse;
         margin: 14px 0;
         font-size: 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
       }
       .security-table th {
         background: var(--surface2);
@@ -469,6 +496,13 @@
         padding: 8px 12px;
         border: 1px solid var(--border);
         color: var(--text-dim);
+        background: var(--surface-soft);
+      }
+      .security-table tbody tr:nth-child(even) td {
+        background: var(--surface2);
+      }
+      .security-table tbody tr:hover td {
+        background: rgba(0, 212, 255, 0.08);
       }
       .security-table .tag-safe {
         color: var(--green);

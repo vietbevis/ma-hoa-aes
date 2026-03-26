@@ -38,6 +38,8 @@
   --strong-text: #ffffff;
   --output-ok: rgba(0, 232, 154, 0.25);
   --output-err: rgba(255, 64, 96, 0.25);
+  --scroll-track: #080f18;
+  --scroll-thumb-border: #080f18;
 }
 
 :root[data-theme="light"] {
@@ -55,11 +57,11 @@
   --green-dim: rgba(0, 140, 99, 0.25);
   --red: #c43446;
   --amber: #b87500;
-  --text: #0f2d40;
-  --text-dim: #23455c;
-  --text-muted: #5a778d;
-  --dim: #2f5269;
-  --dim2: #4c6d83;
+  --text: #1a3f57;
+  --text-dim: #2f536b;
+  --text-muted: #648197;
+  --dim: #3d6078;
+  --dim2: #56758b;
   --white: #0f293b;
   --glow-cyan: 0 0 18px rgba(0, 118, 182, 0.2);
   --glow-green: 0 0 14px rgba(0, 140, 99, 0.2);
@@ -67,9 +69,12 @@
   --nav-bg: rgba(243, 248, 252, 0.92);
   --nav-title: #113249;
   --card-title: #123044;
-  --strong-text: #123044;
+  --strong-text: #204c66;
+  --text-weight: 450;
   --output-ok: rgba(0, 140, 99, 0.2);
   --output-err: rgba(196, 52, 70, 0.22);
+  --scroll-track: #e8f1f8;
+  --scroll-thumb-border: #e8f1f8;
 }
 
 *,
@@ -97,13 +102,13 @@ body {
 
 /* GLOBAL SCROLLBAR THEME */
 html {
-  scrollbar-color: rgba(0, 212, 255, 0.45) var(--surface);
+  scrollbar-color: rgba(0, 212, 255, 0.45) var(--scroll-track);
   scrollbar-width: thin;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 212, 255, 0.45) rgba(8, 15, 24, 0.95);
+  scrollbar-color: rgba(0, 212, 255, 0.45) var(--scroll-track);
 }
 
 *::-webkit-scrollbar {
@@ -112,7 +117,7 @@ html {
 }
 
 *::-webkit-scrollbar-track {
-  background: var(--surface);
+  background: var(--scroll-track);
   border: 1px solid var(--border);
 }
 
@@ -122,7 +127,7 @@ html {
     rgba(0, 212, 255, 0.55),
     rgba(0, 232, 154, 0.45)
   );
-  border: 2px solid var(--surface);
+  border: 2px solid var(--scroll-thumb-border);
   border-radius: 999px;
 }
 
@@ -143,7 +148,7 @@ html {
 }
 
 *::-webkit-scrollbar-corner {
-  background: var(--surface);
+  background: var(--scroll-track);
 }
 
 body::before {
@@ -914,10 +919,12 @@ textarea:focus {
   letter-spacing: 3px;
   text-transform: uppercase;
   color: var(--green);
+  background: var(--surface2);
   border: 1px solid rgba(0, 232, 154, 0.3);
   padding: 3px 12px;
   border-radius: 2px;
   margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .page-title {
   font-family: var(--font-head);

@@ -5,7 +5,7 @@
  * Không sử dụng bất kỳ thư viện mã hóa nào của ngôn ngữ
  *
  * Hỗ trợ: AES-128, AES-192, AES-256
- * Mode:   CBC (Cipher Block Chaining)
+ * Mode:   ECB, CBC, CFB, OFB, CTR
  * Padding: PKCS#7
  *
  * Tác giả: Nguyễn Văn Việt, Trần Duy Quyến
@@ -328,6 +328,52 @@ function pkcs7Unpad(data) {
 }
 
 // ─────────────────────────────────────────────
+//  ECB MODE (ELECTRONIC CODEBOOK)
+// ─────────────────────────────────────────────
+
+/**
+ * Mã hóa AES-ECB
+ * Mỗi block 16 bytes được mã hóa độc lập
+ *
+ * @param {number[]} plainBytes  - dữ liệu gốc
+ * @param {number[]} keyBytes    - khóa (16/24/32 bytes)
+ * @returns {number[]} ciphertext bytes
+ */
+function aesECBEncrypt(plainBytes, keyBytes) {
+  const ks = keyExpansion(keyBytes);
+  const padded = pkcs7Pad(plainBytes);
+  const result = new Array(padded.length);
+
+  for (let i = 0; i < padded.length; i += 16) {
+    const block = padded.slice(i, i + 16);
+    const enc = aesEncryptBlock(block, ks);
+    for (let j = 0; j < 16; j++) result[i + j] = enc[j];
+  }
+  return result;
+}
+
+/**
+ * Giải mã AES-ECB
+ * @param {number[]} cipherBytes - dữ liệu mã hóa
+ * @param {number[]} keyBytes    - khóa (16/24/32 bytes)
+ * @returns {number[]} plaintext bytes
+ */
+function aesECBDecrypt(cipherBytes, keyBytes) {
+  if (cipherBytes.length % 16 !== 0)
+    throw new Error('Độ dài ciphertext phải là bội số của 16 (ECB)');
+
+  const ks = keyExpansion(keyBytes);
+  const result = new Array(cipherBytes.length);
+
+  for (let i = 0; i < cipherBytes.length; i += 16) {
+    const block = cipherBytes.slice(i, i + 16);
+    const dec = aesDecryptBlock(block, ks);
+    for (let j = 0; j < 16; j++) result[i + j] = dec[j];
+  }
+  return pkcs7Unpad(result);
+}
+
+// ─────────────────────────────────────────────
 //  CBC MODE (CIPHER BLOCK CHAINING)
 // ─────────────────────────────────────────────
 
@@ -346,7 +392,6 @@ function aesCBCEncrypt(plainBytes, keyBytes, ivBytes) {
 
   for (let i = 0; i < padded.length; i += 16) {
     const block = padded.slice(i, i + 16);
-    // XOR với block trước (CBC)
     const xored = block.map((b, j) => b ^ prev[j]);
     const enc = aesEncryptBlock(xored, ks);
     result.push(...enc);
@@ -380,13 +425,211 @@ function aesCBCDecrypt(cipherBytes, keyBytes, ivBytes) {
   return pkcs7Unpad(result);
 }
 
+// ─────────────────────────────────────────────
+//  CFB MODE (CIPHER FEEDBACK)
+// ─────────────────────────────────────────────
+
+/**
+ * Mã hóa AES-CFB (segment size = 128 bit = full block)
+ * Không cần padding (stream cipher).
+ *
+ * @param {number[]} plainBytes - dữ liệu gốc (bất kỳ độ dài)
+ * @param {number[]} keyBytes   - khóa (16/24/32 bytes)
+ * @param {number[]} iv         - IV 16 bytes
+ * @returns {number[]} ciphertext bytes (cùng độ dài với plaintext)
+ */
+function aesCFBEncrypt(plainBytes, keyBytes, iv) {
+  if (!iv || iv.length !== 16)
+    throw new Error('CFB mode cần IV đúng 16 bytes');
+
+  const ks = keyExpansion(keyBytes);
+  const result = new Array(plainBytes.length);
+  let shiftReg = iv.slice();
+
+  for (let i = 0; i < plainBytes.length; i += 16) {
+    const encReg = aesEncryptBlock(shiftReg, ks);
+    const remaining = plainBytes.length - i;
+    const blockLen = remaining < 16 ? remaining : 16;
+
+    const newShift = new Array(16);
+    for (let j = 0; j < 16; j++) newShift[j] = 0;
+
+    for (let j = 0; j < blockLen; j++) {
+      result[i + j] = plainBytes[i + j] ^ encReg[j];
+      newShift[j] = result[i + j];
+    }
+    shiftReg = newShift;
+  }
+  return result;
+}
+
+/**
+ * Giải mã AES-CFB
+ *
+ * @param {number[]} cipherBytes - dữ liệu đã mã hóa
+ * @param {number[]} keyBytes    - khóa (16/24/32 bytes)
+ * @param {number[]} iv          - IV 16 bytes
+ * @returns {number[]} plaintext bytes
+ */
+function aesCFBDecrypt(cipherBytes, keyBytes, iv) {
+  if (!iv || iv.length !== 16)
+    throw new Error('CFB mode cần IV đúng 16 bytes');
+
+  const ks = keyExpansion(keyBytes);
+  const result = new Array(cipherBytes.length);
+  let shiftReg = iv.slice();
+
+  for (let i = 0; i < cipherBytes.length; i += 16) {
+    const encReg = aesEncryptBlock(shiftReg, ks);
+    const remaining = cipherBytes.length - i;
+    const blockLen = remaining < 16 ? remaining : 16;
+
+    const newShift = new Array(16);
+    for (let j = 0; j < 16; j++) newShift[j] = 0;
+    for (let j = 0; j < blockLen; j++) newShift[j] = cipherBytes[i + j];
+
+    for (let j = 0; j < blockLen; j++) {
+      result[i + j] = cipherBytes[i + j] ^ encReg[j];
+    }
+    shiftReg = newShift;
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────
+//  OFB MODE (OUTPUT FEEDBACK)
+// ─────────────────────────────────────────────
+
+/**
+ * Mã hóa AES-OFB
+ * Encrypt = Decrypt (đối xứng hoàn toàn).
+ * Không cần padding (stream cipher).
+ *
+ * @param {number[]} plainBytes - dữ liệu gốc (bất kỳ độ dài)
+ * @param {number[]} keyBytes   - khóa (16/24/32 bytes)
+ * @param {number[]} iv         - IV 16 bytes
+ * @returns {number[]} ciphertext bytes (cùng độ dài với plaintext)
+ */
+function aesOFBEncrypt(plainBytes, keyBytes, iv) {
+  if (!iv || iv.length !== 16)
+    throw new Error('OFB mode cần IV đúng 16 bytes');
+
+  const ks = keyExpansion(keyBytes);
+  const result = new Array(plainBytes.length);
+  let feedback = iv.slice();
+
+  for (let i = 0; i < plainBytes.length; i += 16) {
+    feedback = aesEncryptBlock(feedback, ks);
+
+    const remaining = plainBytes.length - i;
+    const blockLen = remaining < 16 ? remaining : 16;
+    for (let j = 0; j < blockLen; j++) {
+      result[i + j] = plainBytes[i + j] ^ feedback[j];
+    }
+  }
+  return result;
+}
+
+/**
+ * Giải mã AES-OFB
+ * OFB decryption = OFB encryption (đối xứng hoàn toàn)
+ */
+function aesOFBDecrypt(cipherBytes, keyBytes, iv) {
+  return aesOFBEncrypt(cipherBytes, keyBytes, iv);
+}
+
+// ─────────────────────────────────────────────
+//  CTR MODE (COUNTER)
+// ─────────────────────────────────────────────
+
+/**
+ * Tăng counter block (big-endian)
+ * Counter chiếm 8 bytes cuối cùng của block 16 bytes
+ *
+ * @param {number[]} counterBlock - mảng 16 bytes [nonce(8) || counter(8)]
+ * @returns {number[]} counter block mới (đã tăng 1)
+ */
+function incrementCounter(counterBlock) {
+  const out = new Array(16);
+  for (let i = 0; i < 16; i++) out[i] = counterBlock[i];
+
+  for (let i = 15; i >= 8; i--) {
+    out[i] = (out[i] + 1) & 0xFF;
+    if (out[i] !== 0) break;
+  }
+  return out;
+}
+
+/**
+ * Mã hóa AES-CTR
+ * CTR là stream cipher: encrypt counter → XOR với plaintext
+ * Không cần padding!
+ *
+ * @param {number[]} plainBytes - dữ liệu gốc
+ * @param {number[]} keyBytes   - khóa (16/24/32 bytes)
+ * @param {number[]} nonce      - nonce 8 bytes
+ * @returns {number[]} ciphertext bytes (cùng độ dài với plaintext)
+ */
+function aesCTREncrypt(plainBytes, keyBytes, nonce) {
+  if (!nonce || nonce.length !== 8)
+    throw new Error('CTR mode cần nonce đúng 8 bytes');
+
+  const ks = keyExpansion(keyBytes);
+  const result = new Array(plainBytes.length);
+
+  let counterBlock = [
+    nonce[0], nonce[1], nonce[2], nonce[3],
+    nonce[4], nonce[5], nonce[6], nonce[7],
+    0, 0, 0, 0, 0, 0, 0, 0
+  ];
+
+  for (let i = 0; i < plainBytes.length; i += 16) {
+    const keystream = aesEncryptBlock(counterBlock, ks);
+
+    const remaining = plainBytes.length - i;
+    const blockLen = remaining < 16 ? remaining : 16;
+    for (let j = 0; j < blockLen; j++) {
+      result[i + j] = plainBytes[i + j] ^ keystream[j];
+    }
+
+    counterBlock = incrementCounter(counterBlock);
+  }
+  return result;
+}
+
+/**
+ * Giải mã AES-CTR
+ * CTR decryption = CTR encryption (đối xứng)
+ */
+function aesCTRDecrypt(cipherBytes, keyBytes, nonce) {
+  return aesCTREncrypt(cipherBytes, keyBytes, nonce);
+}
+
 // Export cho các module khác
 window.AESCore = {
-  aesCBCEncrypt,
-  aesCBCDecrypt,
+  // Block-level
   keyExpansion,
   aesEncryptBlock,
   aesDecryptBlock,
+
+  // Padding
+  pkcs7Pad,
+  pkcs7Unpad,
+
+  // Modes
+  aesECBEncrypt,
+  aesECBDecrypt,
+  aesCBCEncrypt,
+  aesCBCDecrypt,
+  aesCFBEncrypt,
+  aesCFBDecrypt,
+  aesOFBEncrypt,
+  aesOFBDecrypt,
+  aesCTREncrypt,
+  aesCTRDecrypt,
+
+  // Utilities
+  incrementCounter,
   SBOX,
   INV_SBOX,
   gmul

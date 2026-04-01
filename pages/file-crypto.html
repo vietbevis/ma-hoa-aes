@@ -1084,118 +1084,9 @@
         ctx.putImageData(imgData, 0, 0);
       }
 
-      // ── AES File Container Format:
-      //  [4 bytes: magic "AESF"]
-      //  [1 byte: key_bits / 64 → 2/3/4]
-      //  [16 bytes: IV]
-      //  [4 bytes: original filename length (UTF-8)]
-      //  [N bytes: original filename (UTF-8)]
-      //  [4 bytes: original MIME type length]
-      //  [M bytes: original MIME type]
-      //  [rest: ciphertext]
-
-      const MAGIC = [0x41, 0x45, 0x53, 0x46]; // "AESF"
-      const MODE_MAP = { ecb: 0, cbc: 1, ctr: 2, cfb: 3, ofb: 4 };
-      const MODE_NAMES = ["ecb", "cbc", "ctr", "cfb", "ofb"];
-
-      function appendBytes(target, source) {
-        for (let i = 0; i < source.length; i++) target.push(source[i]);
-      }
-
-      function buildContainer(
-        keyBits,
-        iv,
-        filename,
-        mimeType,
-        cipherBytes,
-        mode,
-      ) {
-        const fnBytes = Utils.strToBytes(filename);
-        const mimeBytes = Utils.strToBytes(mimeType);
-        const out = [];
-
-        // Magic
-        appendBytes(out, MAGIC);
-        // Version 2 marker (0x00 — v1 has keyBits/64 ∈ {2,3,4} here, so 0 is unambiguous)
-        out.push(0x00);
-        // Key bits marker
-        out.push(keyBits / 64);
-        // Mode (0=ECB, 1=CBC, 2=CTR, 3=CFB, 4=OFB)
-        out.push(MODE_MAP[mode] != null ? MODE_MAP[mode] : 1);
-        // IV / Nonce (always 16 bytes: ECB=zeros, CTR=nonce(8)+zeros(8), CBC/CFB/OFB=iv(16))
-        const ivPad = iv.slice(0, 16);
-        while (ivPad.length < 16) ivPad.push(0);
-        appendBytes(out, ivPad);
-        // Filename length + data
-        out.push(
-          (fnBytes.length >> 24) & 0xff,
-          (fnBytes.length >> 16) & 0xff,
-          (fnBytes.length >> 8) & 0xff,
-          fnBytes.length & 0xff,
-        );
-        appendBytes(out, fnBytes);
-        // MIME length + data
-        out.push(
-          (mimeBytes.length >> 24) & 0xff,
-          (mimeBytes.length >> 16) & 0xff,
-          (mimeBytes.length >> 8) & 0xff,
-          mimeBytes.length & 0xff,
-        );
-        appendBytes(out, mimeBytes);
-        // Ciphertext
-        appendBytes(out, cipherBytes);
-
-        return out;
-      }
-
-      function parseContainer(bytes) {
-        let pos = 0;
-
-        // Validate magic
-        for (let i = 0; i < 4; i++) {
-          if (bytes[pos++] !== MAGIC[i])
-            throw new Error("Không phải file .aes hợp lệ (magic mismatch)");
-        }
-
-        let keyBits, iv, mode;
-
-        if (bytes[pos] === 0x00) {
-          // ── AESF v2
-          pos++; // skip 0x00 marker
-          keyBits = bytes[pos++] * 64;
-          mode = MODE_NAMES[bytes[pos++]] || "cbc";
-          iv = bytes.slice(pos, pos + 16);
-          pos += 16;
-        } else {
-          // ── AESF v1 (legacy, always CBC)
-          keyBits = bytes[pos++] * 64;
-          mode = "cbc";
-          iv = bytes.slice(pos, pos + 16);
-          pos += 16;
-        }
-
-        const fnLen =
-          (bytes[pos] << 24) |
-          (bytes[pos + 1] << 16) |
-          (bytes[pos + 2] << 8) |
-          bytes[pos + 3];
-        pos += 4;
-        const filename = Utils.bytesToStr(bytes.slice(pos, pos + fnLen));
-        pos += fnLen;
-
-        const mimeLen =
-          (bytes[pos] << 24) |
-          (bytes[pos + 1] << 16) |
-          (bytes[pos + 2] << 8) |
-          bytes[pos + 3];
-        pos += 4;
-        const mimeType = Utils.bytesToStr(bytes.slice(pos, pos + mimeLen));
-        pos += mimeLen;
-
-        const cipher = bytes.slice(pos);
-
-        return { keyBits, iv, filename, mimeType, cipher, mode };
-      }
+      // AESF container logic đã được chuyển vào `js/aes-lib.js`:
+      //  - AES.encryptFile(...)
+      //  - AES.decryptFile(...)
 
       // ════════════════════════════════════════════
       //  ENCRYPT FILE
@@ -1225,19 +1116,6 @@
 
         try {
           await sleep(30);
-          const keyBytes = Utils.prepareKey(keyStr, encKeyBits);
-          let ivBytes;
-          if (encMode === "ecb") {
-            ivBytes = new Array(16).fill(0);
-          } else if (encMode === "ctr") {
-            ivBytes = ivStr
-              ? Utils.prepareKey(ivStr, 64)
-              : Utils.randomBytes(8);
-          } else {
-            ivBytes = ivStr
-              ? Utils.prepareKey(ivStr, 128)
-              : Utils.randomBytes(16);
-          }
           const data = u8toArr(encFileData.bytes);
 
           const modeLabel = encMode.toUpperCase();
@@ -1246,24 +1124,27 @@
 
           const t0 = Date.now();
           const opts = { mode: encMode };
-          if (encMode === "cbc" || encMode === "cfb" || encMode === "ofb")
-            opts.iv = ivBytes;
-          if (encMode === "ctr") opts.nonce = ivBytes;
-          const cipherBytes = AES.encrypt(data, keyBytes, opts);
+          if (ivStr) {
+            if (encMode === "ctr") opts.nonce = Utils.prepareKey(ivStr, 64);
+            else if (encMode !== "ecb") opts.iv = Utils.prepareKey(ivStr, 128);
+          }
+          const enc = AES.encryptFile(
+            data,
+            encFileData.name,
+            encFileData.type,
+            keyStr,
+            encKeyBits,
+            opts,
+          );
+          const cipherBytes = enc.cipherBytes;
+          const ivBytes = encMode === "ctr" ? enc.nonce : enc.iv;
           const elapsed = Date.now() - t0;
 
           setProgress("enc", 80, "Đóng gói container...");
           await sleep(20);
 
-          const container = buildContainer(
-            encKeyBits,
-            ivBytes,
-            encFileData.name,
-            encFileData.type,
-            cipherBytes,
-            encMode,
-          );
-          const outName = encFileData.name + ".aes";
+          const container = enc.container;
+          const outName = enc.outName;
 
           setProgress("enc", 100, "Hoàn tất!");
           await sleep(100);
@@ -1371,26 +1252,40 @@
 
           // Try to parse as AESF container
           let keyBits, ivBytes, filename, mimeType, cipherBytes, mode;
+          let cipherBytesLen = null;
+          let isFromContainer = false;
 
-          try {
-            const parsed = parseContainer(rawBytes);
-            keyBits = parsed.keyBits;
-            ivBytes = parsed.iv;
-            filename = parsed.filename;
-            mimeType = parsed.mimeType;
-            cipherBytes = parsed.cipher;
-            mode = parsed.mode || "cbc";
+          const isAESF =
+            rawBytes.length >= 4 &&
+            rawBytes[0] === 0x41 &&
+            rawBytes[1] === 0x45 &&
+            rawBytes[2] === 0x53 &&
+            rawBytes[3] === 0x46;
 
-            // Override with manual IV if provided
+          if (isAESF) {
+            const opts = {};
             if (ivManual) {
-              ivBytes =
-                mode === "ctr"
-                  ? Utils.prepareKey(ivManual, 64)
-                  : Utils.prepareKey(ivManual, 128);
+              // Nếu người dùng nhập thủ công: CTR dùng nonce 8 bytes, còn lại dùng IV 16 bytes
+              opts.nonce = Utils.prepareKey(ivManual, 64);
+              opts.iv = Utils.prepareKey(ivManual, 128);
             }
-            // Override key bits with UI selection
-            keyBits = decKeyBits;
-          } catch (e) {
+
+            const t0 = Date.now();
+            const dec = AES.decryptFile(rawBytes, keyStr, decKeyBits, opts);
+            const elapsedMs = Date.now() - t0;
+
+            keyBits = dec.keyBitsUsed;
+            ivBytes = dec.iv || (dec.nonce ? dec.nonce : null);
+            filename = dec.filename;
+            mimeType = dec.mimeType;
+            mode = dec.mode || "cbc";
+            cipherBytesLen = dec.cipherBytesLength;
+            isFromContainer = true;
+
+            cipherBytes = null;
+            var __plainBytes = dec.plainBytes;
+            var __elapsed = elapsedMs;
+          } else {
             // Not a container — try raw decrypt with CBC
             keyBits = decKeyBits;
             ivBytes = ivManual
@@ -1401,21 +1296,27 @@
             mimeType = "application/octet-stream";
             cipherBytes = rawBytes;
             mode = "cbc";
+            cipherBytesLen = cipherBytes.length;
           }
 
           const modeLabel = mode.toUpperCase();
           setProgress("dec", 30, `Đang giải mã AES-${modeLabel}...`);
           await sleep(20);
 
-          const keyBytes = Utils.prepareKey(keyStr, keyBits);
-
-          const t0 = Date.now();
-          const opts = { mode };
-          if (mode === "cbc" || mode === "cfb" || mode === "ofb")
-            opts.iv = ivBytes;
-          if (mode === "ctr") opts.nonce = ivBytes.slice(0, 8);
-          const plainBytes = AES.decrypt(cipherBytes, keyBytes, opts);
-          const elapsed = Date.now() - t0;
+          let plainBytes, elapsed;
+          if (isFromContainer) {
+            plainBytes = __plainBytes;
+            elapsed = __elapsed;
+          } else {
+            const keyBytes = Utils.prepareKey(keyStr, keyBits);
+            const t0 = Date.now();
+            const opts = { mode };
+            if (mode === "cbc" || mode === "cfb" || mode === "ofb")
+              opts.iv = ivBytes;
+            if (mode === "ctr") opts.nonce = ivBytes.slice(0, 8);
+            plainBytes = AES.decrypt(cipherBytes, keyBytes, opts);
+            elapsed = Date.now() - t0;
+          }
 
           setProgress("dec", 90, "Chuẩn bị file...");
           await sleep(30);
@@ -1474,7 +1375,7 @@
 
           setStats(
             fmtSize(decFileData.bytes.length),
-            cipherBytes.length / 16,
+            Math.ceil((cipherBytesLen || 0) / 16),
             elapsed,
             fmtSize(plainBytes.length),
           );

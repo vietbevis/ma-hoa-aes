@@ -7,9 +7,9 @@
  *   window.AES = { encrypt, decrypt, encryptText, decryptText,
  *                  internal, trace, traceDec, util, modes }
  *
- * Hỗ trợ 5 mode: ECB, CBC, CFB, OFB, CTR
- * Tự cài đặt: ECB, CFB, OFB, CTR, internal transforms, counter increment
- * Không sử dụng bất kỳ hàm crypto/encode có sẵn nào
+ * Tất cả 5 mode (ECB, CBC, CFB, OFB, CTR) được cài đặt trong aes-core.js.
+ * File này cung cấp: unified API, trace cho visualizer, mode info cho UI.
+ * Không sử dụng bất kỳ hàm crypto/encode có sẵn nào.
  *
  * Tác giả: Nguyễn Văn Việt, Trần Duy Quyến
  * Học viện Kỹ thuật Mật mã — Môn CSATBMTT
@@ -24,19 +24,14 @@
   const U = window.Utils;
 
   // ════════════════════════════════════════════
-  //  INTERNAL TRANSFORMS (tự cài đặt lại vì core không export)
+  //  INTERNAL TRANSFORMS (cho trace / visualizer)
   // ════════════════════════════════════════════
 
   /**
    * Chuyển 16 bytes → ma trận state 4×4 (column-major)
    */
   function bytesToState(block) {
-    const s = [
-      [0, 0, 0, 0],
-      [0, 0, 0, 0],
-      [0, 0, 0, 0],
-      [0, 0, 0, 0]
-    ];
+    const s = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
     for (let r = 0; r < 4; r++)
       for (let c = 0; c < 4; c++)
         s[r][c] = block[r + 4 * c];
@@ -148,269 +143,6 @@
   }
 
   // ════════════════════════════════════════════
-  //  PKCS#7 PADDING (forward từ logic core)
-  // ════════════════════════════════════════════
-
-  function pkcs7Pad(data) {
-    const pad = 16 - (data.length % 16);
-    const out = new Array(data.length + pad);
-    for (let i = 0; i < data.length; i++) out[i] = data[i];
-    for (let i = data.length; i < out.length; i++) out[i] = pad;
-    return out;
-  }
-
-  function pkcs7Unpad(data) {
-    if (data.length === 0) throw new Error('Dữ liệu rỗng, không thể unpad');
-    const pad = data[data.length - 1];
-    if (pad < 1 || pad > 16) throw new Error('Padding PKCS#7 không hợp lệ');
-    for (let i = data.length - pad; i < data.length; i++) {
-      if (data[i] !== pad) throw new Error('Padding PKCS#7 bị hỏng');
-    }
-    return data.slice(0, data.length - pad);
-  }
-
-  // ════════════════════════════════════════════
-  //  ECB MODE — Electronic Codebook
-  // ════════════════════════════════════════════
-
-  /**
-   * Mã hóa AES-ECB
-   * Mỗi block 16 bytes được mã hóa độc lập
-   * ⚠️ ECB không an toàn cho dữ liệu có pattern lặp!
-   *
-   * @param {number[]} plainBytes  - dữ liệu gốc
-   * @param {number[]} keyBytes    - khóa (16/24/32 bytes)
-   * @returns {number[]} ciphertext bytes
-   */
-  function aesECBEncrypt(plainBytes, keyBytes) {
-    const ks = Core.keyExpansion(keyBytes);
-    const padded = pkcs7Pad(plainBytes);
-    const result = new Array(padded.length);
-
-    for (let i = 0; i < padded.length; i += 16) {
-      const block = padded.slice(i, i + 16);
-      const enc = Core.aesEncryptBlock(block, ks);
-      for (let j = 0; j < 16; j++) result[i + j] = enc[j];
-    }
-    return result;
-  }
-
-  /**
-   * Giải mã AES-ECB
-   * @param {number[]} cipherBytes - dữ liệu mã hóa
-   * @param {number[]} keyBytes    - khóa (16/24/32 bytes)
-   * @returns {number[]} plaintext bytes
-   */
-  function aesECBDecrypt(cipherBytes, keyBytes) {
-    if (cipherBytes.length % 16 !== 0)
-      throw new Error('Độ dài ciphertext phải là bội số của 16 (ECB)');
-
-    const ks = Core.keyExpansion(keyBytes);
-    const result = new Array(cipherBytes.length);
-
-    for (let i = 0; i < cipherBytes.length; i += 16) {
-      const block = cipherBytes.slice(i, i + 16);
-      const dec = Core.aesDecryptBlock(block, ks);
-      for (let j = 0; j < 16; j++) result[i + j] = dec[j];
-    }
-    return pkcs7Unpad(result);
-  }
-
-  // ════════════════════════════════════════════
-  //  CTR MODE — Counter
-  // ════════════════════════════════════════════
-
-  /**
-   * Tăng counter block (big-endian) — tự cài đặt
-   * Counter chiếm 8 bytes cuối cùng của block 16 bytes
-   * Tăng từ byte cuối cùng (byte[15]) ngược về byte[8]
-   *
-   * @param {number[]} counterBlock - mảng 16 bytes [nonce(8) || counter(8)]
-   * @returns {number[]} counter block mới (đã tăng 1)
-   */
-  function incrementCounter(counterBlock) {
-    const out = new Array(16);
-    for (let i = 0; i < 16; i++) out[i] = counterBlock[i];
-
-    // Tăng 8 bytes cuối (big-endian)
-    for (let i = 15; i >= 8; i--) {
-      out[i] = (out[i] + 1) & 0xFF;
-      if (out[i] !== 0) break;  // không tràn → dừng
-    }
-    return out;
-  }
-
-  /**
-   * Mã hóa AES-CTR
-   * CTR là stream cipher: encrypt counter → XOR với plaintext
-   * Không cần padding!
-   *
-   * @param {number[]} plainBytes - dữ liệu gốc
-   * @param {number[]} keyBytes   - khóa (16/24/32 bytes)
-   * @param {number[]} nonce      - nonce 8 bytes
-   * @returns {number[]} ciphertext bytes (cùng độ dài với plaintext)
-   */
-  function aesCTREncrypt(plainBytes, keyBytes, nonce) {
-    if (!nonce || nonce.length !== 8)
-      throw new Error('CTR mode cần nonce đúng 8 bytes');
-
-    const ks = Core.keyExpansion(keyBytes);
-    const result = new Array(plainBytes.length);
-
-    // Xây dựng counter block ban đầu: nonce(8) || 0x0000000000000000(8)
-    var counterBlock = [
-      nonce[0], nonce[1], nonce[2], nonce[3],
-      nonce[4], nonce[5], nonce[6], nonce[7],
-      0, 0, 0, 0, 0, 0, 0, 0
-    ];
-
-    for (let i = 0; i < plainBytes.length; i += 16) {
-      // Mã hóa counter block
-      const keystream = Core.aesEncryptBlock(counterBlock, ks);
-
-      // XOR keystream với plaintext block
-      const remaining = plainBytes.length - i;
-      const blockLen = remaining < 16 ? remaining : 16;
-      for (let j = 0; j < blockLen; j++) {
-        result[i + j] = plainBytes[i + j] ^ keystream[j];
-      }
-
-      // Tăng counter
-      counterBlock = incrementCounter(counterBlock);
-    }
-    return result;
-  }
-
-  /**
-   * Giải mã AES-CTR
-   * CTR decryption = CTR encryption (đối xứng)
-   */
-  function aesCTRDecrypt(cipherBytes, keyBytes, nonce) {
-    return aesCTREncrypt(cipherBytes, keyBytes, nonce);
-  }
-
-  // ════════════════════════════════════════════
-  //  CFB MODE — Cipher Feedback
-  // ════════════════════════════════════════════
-
-  /**
-   * Mã hóa AES-CFB (segment size = 128 bit = full block)
-   * Mỗi bước: mã hóa shift register → XOR với plaintext block → kết quả
-   * vừa là ciphertext, vừa trở thành shift register mới.
-   * Không cần padding (stream cipher).
-   *
-   * @param {number[]} plainBytes - dữ liệu gốc (bất kỳ độ dài)
-   * @param {number[]} keyBytes   - khóa (16/24/32 bytes)
-   * @param {number[]} iv         - IV 16 bytes
-   * @returns {number[]} ciphertext bytes (cùng độ dài với plaintext)
-   */
-  function aesCFBEncrypt(plainBytes, keyBytes, iv) {
-    if (!iv || iv.length !== 16)
-      throw new Error('CFB mode cần IV đúng 16 bytes');
-
-    var ks = Core.keyExpansion(keyBytes);
-    var result = new Array(plainBytes.length);
-    var shiftReg = iv.slice();
-
-    for (var i = 0; i < plainBytes.length; i += 16) {
-      var encReg = Core.aesEncryptBlock(shiftReg, ks);
-      var remaining = plainBytes.length - i;
-      var blockLen = remaining < 16 ? remaining : 16;
-
-      // Tạo block ciphertext mới cho shift register
-      var newShift = new Array(16);
-      for (var j = 0; j < 16; j++) newShift[j] = 0;
-
-      for (var j = 0; j < blockLen; j++) {
-        result[i + j] = plainBytes[i + j] ^ encReg[j];
-        newShift[j] = result[i + j];
-      }
-      // Nếu block cuối < 16 bytes, pad shift register bằng 0
-      shiftReg = newShift;
-    }
-    return result;
-  }
-
-  /**
-   * Giải mã AES-CFB
-   *
-   * @param {number[]} cipherBytes - dữ liệu đã mã hóa
-   * @param {number[]} keyBytes    - khóa (16/24/32 bytes)
-   * @param {number[]} iv          - IV 16 bytes
-   * @returns {number[]} plaintext bytes
-   */
-  function aesCFBDecrypt(cipherBytes, keyBytes, iv) {
-    if (!iv || iv.length !== 16)
-      throw new Error('CFB mode cần IV đúng 16 bytes');
-
-    var ks = Core.keyExpansion(keyBytes);
-    var result = new Array(cipherBytes.length);
-    var shiftReg = iv.slice();
-
-    for (var i = 0; i < cipherBytes.length; i += 16) {
-      var encReg = Core.aesEncryptBlock(shiftReg, ks);
-      var remaining = cipherBytes.length - i;
-      var blockLen = remaining < 16 ? remaining : 16;
-
-      // Tạo shift register mới từ ciphertext TRƯỚC khi XOR
-      var newShift = new Array(16);
-      for (var j = 0; j < 16; j++) newShift[j] = 0;
-      for (var j = 0; j < blockLen; j++) newShift[j] = cipherBytes[i + j];
-
-      for (var j = 0; j < blockLen; j++) {
-        result[i + j] = cipherBytes[i + j] ^ encReg[j];
-      }
-      shiftReg = newShift;
-    }
-    return result;
-  }
-
-  // ════════════════════════════════════════════
-  //  OFB MODE — Output Feedback
-  // ════════════════════════════════════════════
-
-  /**
-   * Mã hóa AES-OFB
-   * Mỗi bước: mã hóa feedback block → output = XOR với plaintext.
-   * Feedback block = kết quả mã hóa (KHÔNG phải ciphertext).
-   * Encrypt = Decrypt (đối xứng hoàn toàn).
-   * Không cần padding (stream cipher).
-   *
-   * @param {number[]} plainBytes - dữ liệu gốc (bất kỳ độ dài)
-   * @param {number[]} keyBytes   - khóa (16/24/32 bytes)
-   * @param {number[]} iv         - IV 16 bytes
-   * @returns {number[]} ciphertext bytes (cùng độ dài với plaintext)
-   */
-  function aesOFBEncrypt(plainBytes, keyBytes, iv) {
-    if (!iv || iv.length !== 16)
-      throw new Error('OFB mode cần IV đúng 16 bytes');
-
-    var ks = Core.keyExpansion(keyBytes);
-    var result = new Array(plainBytes.length);
-    var feedback = iv.slice();
-
-    for (var i = 0; i < plainBytes.length; i += 16) {
-      // Mã hóa feedback block → tạo keystream
-      feedback = Core.aesEncryptBlock(feedback, ks);
-
-      var remaining = plainBytes.length - i;
-      var blockLen = remaining < 16 ? remaining : 16;
-      for (var j = 0; j < blockLen; j++) {
-        result[i + j] = plainBytes[i + j] ^ feedback[j];
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Giải mã AES-OFB
-   * OFB decryption = OFB encryption (đối xứng hoàn toàn)
-   */
-  function aesOFBDecrypt(cipherBytes, keyBytes, iv) {
-    return aesOFBEncrypt(cipherBytes, keyBytes, iv);
-  }
-
-  // ════════════════════════════════════════════
   //  UNIFIED ENCRYPT / DECRYPT API
   // ════════════════════════════════════════════
 
@@ -426,7 +158,7 @@
     var mode = (opts && opts.mode) ? opts.mode.toLowerCase() : 'cbc';
 
     if (mode === 'ecb') {
-      return aesECBEncrypt(plainBytes, keyBytes);
+      return Core.aesECBEncrypt(plainBytes, keyBytes);
     }
     if (mode === 'cbc') {
       var iv = opts && opts.iv;
@@ -436,17 +168,17 @@
     if (mode === 'cfb') {
       var iv = opts && opts.iv;
       if (!iv) throw new Error('CFB mode cần IV 16 bytes');
-      return aesCFBEncrypt(plainBytes, keyBytes, iv);
+      return Core.aesCFBEncrypt(plainBytes, keyBytes, iv);
     }
     if (mode === 'ofb') {
       var iv = opts && opts.iv;
       if (!iv) throw new Error('OFB mode cần IV 16 bytes');
-      return aesOFBEncrypt(plainBytes, keyBytes, iv);
+      return Core.aesOFBEncrypt(plainBytes, keyBytes, iv);
     }
     if (mode === 'ctr') {
       var nonce = opts && opts.nonce;
       if (!nonce) throw new Error('CTR mode cần nonce 8 bytes');
-      return aesCTREncrypt(plainBytes, keyBytes, nonce);
+      return Core.aesCTREncrypt(plainBytes, keyBytes, nonce);
     }
     throw new Error('Mode không hợp lệ: ' + mode + '. Chọn ecb, cbc, cfb, ofb hoặc ctr');
   }
@@ -463,7 +195,7 @@
     var mode = (opts && opts.mode) ? opts.mode.toLowerCase() : 'cbc';
 
     if (mode === 'ecb') {
-      return aesECBDecrypt(cipherBytes, keyBytes);
+      return Core.aesECBDecrypt(cipherBytes, keyBytes);
     }
     if (mode === 'cbc') {
       var iv = opts && opts.iv;
@@ -473,17 +205,17 @@
     if (mode === 'cfb') {
       var iv = opts && opts.iv;
       if (!iv) throw new Error('CFB mode cần IV 16 bytes');
-      return aesCFBDecrypt(cipherBytes, keyBytes, iv);
+      return Core.aesCFBDecrypt(cipherBytes, keyBytes, iv);
     }
     if (mode === 'ofb') {
       var iv = opts && opts.iv;
       if (!iv) throw new Error('OFB mode cần IV 16 bytes');
-      return aesOFBDecrypt(cipherBytes, keyBytes, iv);
+      return Core.aesOFBDecrypt(cipherBytes, keyBytes, iv);
     }
     if (mode === 'ctr') {
       var nonce = opts && opts.nonce;
       if (!nonce) throw new Error('CTR mode cần nonce 8 bytes');
-      return aesCTRDecrypt(cipherBytes, keyBytes, nonce);
+      return Core.aesCTRDecrypt(cipherBytes, keyBytes, nonce);
     }
     throw new Error('Mode không hợp lệ: ' + mode + '. Chọn ecb, cbc, cfb, ofb hoặc ctr');
   }
@@ -508,7 +240,7 @@
     var result = { mode: mode, keyHex: U.toHex(keyBytes) };
 
     if (mode === 'ecb') {
-      var cipher = aesECBEncrypt(plainBytes, keyBytes);
+      var cipher = Core.aesECBEncrypt(plainBytes, keyBytes);
       result.cipher = U.toBase64(cipher);
     } else if (mode === 'cbc') {
       var iv = (opts && opts.iv) ? opts.iv : U.randomBytes(16);
@@ -517,17 +249,17 @@
       result.iv = U.toBase64(iv);
     } else if (mode === 'cfb') {
       var iv = (opts && opts.iv) ? opts.iv : U.randomBytes(16);
-      var cipher = aesCFBEncrypt(plainBytes, keyBytes, iv);
+      var cipher = Core.aesCFBEncrypt(plainBytes, keyBytes, iv);
       result.cipher = U.toBase64(cipher);
       result.iv = U.toBase64(iv);
     } else if (mode === 'ofb') {
       var iv = (opts && opts.iv) ? opts.iv : U.randomBytes(16);
-      var cipher = aesOFBEncrypt(plainBytes, keyBytes, iv);
+      var cipher = Core.aesOFBEncrypt(plainBytes, keyBytes, iv);
       result.cipher = U.toBase64(cipher);
       result.iv = U.toBase64(iv);
     } else if (mode === 'ctr') {
       var nonce = (opts && opts.nonce) ? opts.nonce : U.randomBytes(8);
-      var cipher = aesCTREncrypt(plainBytes, keyBytes, nonce);
+      var cipher = Core.aesCTREncrypt(plainBytes, keyBytes, nonce);
       result.cipher = U.toBase64(cipher);
       result.nonce = U.toBase64(nonce);
     } else {
@@ -552,7 +284,7 @@
     var plainBytes;
 
     if (mode === 'ecb') {
-      plainBytes = aesECBDecrypt(cipherBytes, keyBytes);
+      plainBytes = Core.aesECBDecrypt(cipherBytes, keyBytes);
     } else if (mode === 'cbc') {
       var iv = opts && opts.ivB64 ? U.fromBase64(opts.ivB64) : null;
       if (!iv) throw new Error('CBC giải mã cần IV (Base64)');
@@ -560,19 +292,201 @@
     } else if (mode === 'cfb') {
       var iv = opts && opts.ivB64 ? U.fromBase64(opts.ivB64) : null;
       if (!iv) throw new Error('CFB giải mã cần IV (Base64)');
-      plainBytes = aesCFBDecrypt(cipherBytes, keyBytes, iv);
+      plainBytes = Core.aesCFBDecrypt(cipherBytes, keyBytes, iv);
     } else if (mode === 'ofb') {
       var iv = opts && opts.ivB64 ? U.fromBase64(opts.ivB64) : null;
       if (!iv) throw new Error('OFB giải mã cần IV (Base64)');
-      plainBytes = aesOFBDecrypt(cipherBytes, keyBytes, iv);
+      plainBytes = Core.aesOFBDecrypt(cipherBytes, keyBytes, iv);
     } else if (mode === 'ctr') {
       var nonce = opts && opts.nonceB64 ? U.fromBase64(opts.nonceB64) : null;
       if (!nonce) throw new Error('CTR giải mã cần Nonce (Base64)');
-      plainBytes = aesCTRDecrypt(cipherBytes, keyBytes, nonce);
+      plainBytes = Core.aesCTRDecrypt(cipherBytes, keyBytes, nonce);
     } else {
       throw new Error('Mode không hợp lệ: ' + mode);
     }
     return U.bytesToStr(plainBytes);
+  }
+
+  // ════════════════════════════════════════════
+  //  FILE ENCRYPT / DECRYPT (AESF CONTAINER)
+  // ════════════════════════════════════════════
+
+  // AESF container format (v2):
+  //  [4 bytes: magic "AESF"]
+  //  [1 byte: 0x00 marker (v2)]
+  //  [1 byte: keyBits/64 → 2/3/4]
+  //  [1 byte: mode id (0=ECB,1=CBC,2=CTR,3=CFB,4=OFB)]
+  //  [16 bytes: IV/Nonce padded to 16 bytes]
+  //  [4 bytes: filename length] [N bytes: filename UTF-8]
+  //  [4 bytes: mime length]     [M bytes: mime UTF-8]
+  //  [rest: ciphertext bytes]
+  const AESF_MAGIC = [0x41, 0x45, 0x53, 0x46]; // "AESF"
+  const AESF_MODE_MAP = { ecb: 0, cbc: 1, ctr: 2, cfb: 3, ofb: 4 };
+  const AESF_MODE_NAMES = ['ecb', 'cbc', 'ctr', 'cfb', 'ofb'];
+
+  function appendBytes(target, source) {
+    for (let i = 0; i < source.length; i++) target.push(source[i]);
+  }
+
+  function buildAESFContainer(keyBits, ivOrNonce, filename, mimeType, cipherBytes, mode) {
+    const fnBytes = U.strToBytes(filename || 'encrypted.bin');
+    const mimeBytes = U.strToBytes(mimeType || 'application/octet-stream');
+    const out = [];
+
+    appendBytes(out, AESF_MAGIC);
+    out.push(0x00); // v2 marker
+    out.push(keyBits / 64);
+    out.push(AESF_MODE_MAP[mode] != null ? AESF_MODE_MAP[mode] : 1);
+
+    const ivPad = (ivOrNonce || []).slice(0, 16);
+    while (ivPad.length < 16) ivPad.push(0);
+    appendBytes(out, ivPad);
+
+    out.push(
+      (fnBytes.length >> 24) & 0xff,
+      (fnBytes.length >> 16) & 0xff,
+      (fnBytes.length >> 8) & 0xff,
+      fnBytes.length & 0xff,
+    );
+    appendBytes(out, fnBytes);
+
+    out.push(
+      (mimeBytes.length >> 24) & 0xff,
+      (mimeBytes.length >> 16) & 0xff,
+      (mimeBytes.length >> 8) & 0xff,
+      mimeBytes.length & 0xff,
+    );
+    appendBytes(out, mimeBytes);
+
+    appendBytes(out, cipherBytes);
+    return out;
+  }
+
+  function parseAESFContainer(bytes) {
+    const arr = Array.isArray(bytes) ? bytes : Array.from(bytes);
+    let pos = 0;
+
+    for (let i = 0; i < 4; i++) {
+      if (arr[pos++] !== AESF_MAGIC[i]) {
+        throw new Error('Không phải file .aes hợp lệ (magic mismatch)');
+      }
+    }
+
+    let keyBits, iv, mode;
+    if (arr[pos] === 0x00) {
+      pos++;
+      keyBits = arr[pos++] * 64;
+      mode = AESF_MODE_NAMES[arr[pos++]] || 'cbc';
+      iv = arr.slice(pos, pos + 16);
+      pos += 16;
+    } else {
+      // legacy v1: [keyBits/64][16 IV][...cipher], always CBC
+      keyBits = arr[pos++] * 64;
+      mode = 'cbc';
+      iv = arr.slice(pos, pos + 16);
+      pos += 16;
+    }
+
+    const fnLen =
+      (arr[pos] << 24) |
+      (arr[pos + 1] << 16) |
+      (arr[pos + 2] << 8) |
+      arr[pos + 3];
+    pos += 4;
+    const filename = U.bytesToStr(arr.slice(pos, pos + fnLen));
+    pos += fnLen;
+
+    const mimeLen =
+      (arr[pos] << 24) |
+      (arr[pos + 1] << 16) |
+      (arr[pos + 2] << 8) |
+      arr[pos + 3];
+    pos += 4;
+    const mimeType = U.bytesToStr(arr.slice(pos, pos + mimeLen));
+    pos += mimeLen;
+
+    const cipher = arr.slice(pos);
+    return { keyBits, iv, filename, mimeType, cipher, mode };
+  }
+
+  /**
+   * Mã hóa file bytes → AESF container bytes
+   *
+   * @param {Uint8Array|number[]} fileBytes
+   * @param {string} filename
+   * @param {string} mimeType
+   * @param {string} keyStr
+   * @param {number} keyBits 128/192/256
+   * @param {{mode?: string, iv?: number[], nonce?: number[]}} opts
+   */
+  function encryptFile(fileBytes, filename, mimeType, keyStr, keyBits, opts) {
+    const mode = (opts && opts.mode) ? opts.mode.toLowerCase() : 'cbc';
+    const data = Array.isArray(fileBytes) ? fileBytes : Array.from(fileBytes);
+    const keyBytes = U.prepareKey(keyStr, keyBits);
+
+    let ivOrNonce;
+    if (mode === 'ecb') {
+      ivOrNonce = new Array(16).fill(0);
+    } else if (mode === 'ctr') {
+      ivOrNonce = (opts && opts.nonce) ? opts.nonce.slice(0, 8) : U.randomBytes(8);
+    } else {
+      ivOrNonce = (opts && opts.iv) ? opts.iv.slice(0, 16) : U.randomBytes(16);
+    }
+
+    const aesOpts = { mode };
+    if (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') aesOpts.iv = ivOrNonce;
+    if (mode === 'ctr') aesOpts.nonce = ivOrNonce;
+
+    const cipherBytes = encrypt(data, keyBytes, aesOpts);
+    const container = buildAESFContainer(keyBits, ivOrNonce, filename, mimeType, cipherBytes, mode);
+    return {
+      container,
+      cipherBytes,
+      outName: (filename || 'encrypted.bin') + '.aes',
+      keyHex: U.toHex(keyBytes),
+      keyBits,
+      mode,
+      iv: (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') ? ivOrNonce : null,
+      nonce: (mode === 'ctr') ? ivOrNonce : null
+    };
+  }
+
+  /**
+   * Giải mã AESF container bytes → file bytes
+   *
+   * @param {Uint8Array|number[]} containerBytes
+   * @param {string} keyStr
+   * @param {number} keyBitsOverride 128/192/256 (UI chọn); nếu null sẽ dùng embedded keyBits
+   * @param {{iv?: number[], nonce?: number[]}} opts
+   */
+  function decryptFile(containerBytes, keyStr, keyBitsOverride, opts) {
+    const raw = Array.isArray(containerBytes) ? containerBytes : Array.from(containerBytes);
+    const parsed = parseAESFContainer(raw);
+
+    const mode = (parsed.mode || 'cbc').toLowerCase();
+    const keyBits = keyBitsOverride || parsed.keyBits || 128;
+    const keyBytes = U.prepareKey(keyStr, keyBits);
+
+    let ivOrNonce = parsed.iv;
+    if (mode === 'ctr' && opts && opts.nonce) ivOrNonce = opts.nonce.slice(0, 8);
+    if ((mode === 'cbc' || mode === 'cfb' || mode === 'ofb') && opts && opts.iv) ivOrNonce = opts.iv.slice(0, 16);
+
+    const aesOpts = { mode };
+    if (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') aesOpts.iv = ivOrNonce;
+    if (mode === 'ctr') aesOpts.nonce = ivOrNonce.slice(0, 8);
+
+    const plainBytes = decrypt(parsed.cipher, keyBytes, aesOpts);
+    return {
+      plainBytes,
+      filename: parsed.filename || 'decrypted.bin',
+      mimeType: parsed.mimeType || 'application/octet-stream',
+      mode,
+      embeddedKeyBits: parsed.keyBits,
+      keyBitsUsed: keyBits,
+      cipherBytesLength: parsed.cipher.length,
+      iv: (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') ? ivOrNonce : null,
+      nonce: (mode === 'ctr') ? ivOrNonce.slice(0, 8) : null
+    };
   }
 
   // ════════════════════════════════════════════
@@ -751,17 +665,21 @@
     encryptText: encryptText,
     decryptText: decryptText,
 
-    // ── Low-level mode functions
-    ecbEncrypt: aesECBEncrypt,
-    ecbDecrypt: aesECBDecrypt,
+    // ── File API (AESF container)
+    encryptFile: encryptFile,
+    decryptFile: decryptFile,
+
+    // ── Low-level mode functions (tất cả từ aes-core.js)
+    ecbEncrypt: Core.aesECBEncrypt,
+    ecbDecrypt: Core.aesECBDecrypt,
     cbcEncrypt: Core.aesCBCEncrypt,
     cbcDecrypt: Core.aesCBCDecrypt,
-    cfbEncrypt: aesCFBEncrypt,
-    cfbDecrypt: aesCFBDecrypt,
-    ofbEncrypt: aesOFBEncrypt,
-    ofbDecrypt: aesOFBDecrypt,
-    ctrEncrypt: aesCTREncrypt,
-    ctrDecrypt: aesCTRDecrypt,
+    cfbEncrypt: Core.aesCFBEncrypt,
+    cfbDecrypt: Core.aesCFBDecrypt,
+    ofbEncrypt: Core.aesOFBEncrypt,
+    ofbDecrypt: Core.aesOFBDecrypt,
+    ctrEncrypt: Core.aesCTREncrypt,
+    ctrDecrypt: Core.aesCTRDecrypt,
 
     // ── Block-level
     encryptBlock: Core.aesEncryptBlock,
@@ -783,9 +701,9 @@
       SBOX: Core.SBOX,
       INV_SBOX: Core.INV_SBOX,
       gmul: Core.gmul,
-      pkcs7Pad: pkcs7Pad,
-      pkcs7Unpad: pkcs7Unpad,
-      incrementCounter: incrementCounter
+      pkcs7Pad: Core.pkcs7Pad,
+      pkcs7Unpad: Core.pkcs7Unpad,
+      incrementCounter: Core.incrementCounter
     },
 
     // ── Trace (cho visualizer)

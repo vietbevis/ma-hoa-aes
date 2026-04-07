@@ -112,7 +112,7 @@ function runAllTests() {
   });
 
   test('ECB: ciphertext length là bội số 16 (PKCS#7)', () => {
-    const key = Utils.prepareKey('key', 128);
+    const key = Utils.prepareKey('SixteenByteKey!!', 128);
     for (const len of [1, 7, 15, 16, 17, 31, 32]) {
       const plain = new Array(len).fill(0x41);
       const enc = AES.ecbEncrypt(plain, key);
@@ -147,7 +147,7 @@ function runAllTests() {
   });
 
   test('CTR: ciphertext cùng độ dài plaintext (không padding)', () => {
-    const key = Utils.prepareKey('key', 128);
+    const key = Utils.prepareKey('SixteenByteKey!!', 128);
     const nonce = Utils.randomBytes(8);
     for (const len of [1, 7, 15, 16, 17, 31, 32, 100]) {
       const plain = new Array(len).fill(0x42);
@@ -178,7 +178,7 @@ function runAllTests() {
   });
 
   test('CFB: ciphertext cùng độ dài plaintext (không padding)', () => {
-    const key = Utils.prepareKey('key', 128);
+    const key = Utils.prepareKey('SixteenByteKey!!', 128);
     const iv = Utils.randomBytes(16);
     for (const len of [1, 7, 15, 16, 17, 31, 32, 100]) {
       const plain = new Array(len).fill(0x43);
@@ -199,7 +199,7 @@ function runAllTests() {
   });
 
   test('CFB: AES-256 round-trip', () => {
-    const key = Utils.prepareKey('CFB256Key!CFB256Key!CFB256Key!!!', 256);
+    const key = Utils.prepareKey('12345678901234567890123456789012', 256);
     const iv = Utils.randomBytes(16);
     const plain = Utils.strToBytes('AES-256-CFB encryption test with longer key');
     const enc = AES.cfbEncrypt(plain, key, iv);
@@ -218,7 +218,7 @@ function runAllTests() {
   });
 
   test('OFB: ciphertext cùng độ dài plaintext (không padding)', () => {
-    const key = Utils.prepareKey('key', 128);
+    const key = Utils.prepareKey('SixteenByteKey!!', 128);
     const iv = Utils.randomBytes(16);
     for (const len of [1, 7, 15, 16, 17, 31, 32, 100]) {
       const plain = new Array(len).fill(0x44);
@@ -248,7 +248,7 @@ function runAllTests() {
   });
 
   test('OFB: AES-256 round-trip', () => {
-    const key = Utils.prepareKey('OFB256Key!OFB256Key!OFB256Key!!!', 256);
+    const key = Utils.prepareKey('12345678901234567890123456789012', 256);
     const iv = Utils.randomBytes(16);
     const plain = Utils.strToBytes('AES-256-OFB encryption test with longer key');
     const enc = AES.ofbEncrypt(plain, key, iv);
@@ -283,7 +283,7 @@ function runAllTests() {
 
   // ─── Round-trip tests ───
   test('Round-trip: text ngắn ASCII', () => {
-    const key = Utils.prepareKey('SecretKey123!', 128);
+    const key = Utils.prepareKey('SecretKey1234!!!', 128);
     const iv = Utils.randomBytes(16);
     const plain = Utils.strToBytes('Hello, AES!');
     const enc = AESCore.aesCBCEncrypt(plain, key, iv);
@@ -292,7 +292,7 @@ function runAllTests() {
   });
 
   test('Round-trip: text tiếng Việt UTF-8', () => {
-    const key = Utils.prepareKey('Khoa hoc mat ma', 128);
+    const key = Utils.prepareKey('Khoa hoc mat ma!', 128);
     const iv = Utils.randomBytes(16);
     const plain = Utils.strToBytes('Xin chào Việt Nam! Đây là thử nghiệm mã hóa AES.');
     const enc = AESCore.aesCBCEncrypt(plain, key, iv);
@@ -311,7 +311,7 @@ function runAllTests() {
   });
 
   test('Round-trip: AES-192', () => {
-    const key = Utils.prepareKey('AES192KeyTest!!!AES192KeyTest!!!', 192);
+    const key = Utils.prepareKey('123456789012345678901234', 192);
     const iv = Utils.randomBytes(16);
     const plain = Utils.strToBytes('Testing AES-192 encryption mode.');
     const enc = AESCore.aesCBCEncrypt(plain, key, iv);
@@ -321,7 +321,7 @@ function runAllTests() {
 
   // ─── PKCS#7 Padding ───
   test('PKCS#7: ciphertext length là bội số 16', () => {
-    const key = Utils.prepareKey('key', 128);
+    const key = Utils.prepareKey('SixteenByteKey!!', 128);
     const iv = Utils.randomBytes(16);
     for (const len of [1, 7, 15, 16, 17, 31, 32]) {
       const plain = new Array(len).fill(0x41);
@@ -369,7 +369,7 @@ function runAllTests() {
   test('Avalanche effect: 1 bit khóa khác → ciphertext khác hoàn toàn', () => {
     const iv = Utils.randomBytes(16);
     const plain = Utils.strToBytes('AvalancheTest!!');
-    const key1 = Utils.prepareKey('Key1', 128);
+    const key1 = Utils.prepareKey('Key1Key1Key1Key1', 128);
     const key2 = [...key1]; key2[0] ^= 0x01; // flip 1 bit
     const enc1 = AESCore.aesCBCEncrypt(plain, key1, iv);
     const enc2 = AESCore.aesCBCEncrypt(plain, key2, iv);
@@ -394,32 +394,32 @@ function runAllTests() {
 
   // ─── AES Library API ───
   test('AES.encryptText/decryptText round-trip (CBC)', () => {
-    const result = AES.encryptText('Hello Library!', 'TestKey!', 128, { mode: 'cbc' });
-    const dec = AES.decryptText(result.cipher, 'TestKey!', 128, { mode: 'cbc', ivB64: result.iv });
+    const result = AES.encryptText('Hello Library!', 'TestKey!12345678', 128, { mode: 'cbc' });
+    const dec = AES.decryptText(result.cipher, 'TestKey!12345678', 128, { mode: 'cbc', ivB64: result.iv });
     return dec === 'Hello Library!';
   });
 
   test('AES.encryptText/decryptText round-trip (ECB)', () => {
-    const result = AES.encryptText('ECB Library Test', 'ECBKey!!', 128, { mode: 'ecb' });
-    const dec = AES.decryptText(result.cipher, 'ECBKey!!', 128, { mode: 'ecb' });
+    const result = AES.encryptText('ECB Library Test', 'ECBKey!!12345678', 128, { mode: 'ecb' });
+    const dec = AES.decryptText(result.cipher, 'ECBKey!!12345678', 128, { mode: 'ecb' });
     return dec === 'ECB Library Test';
   });
 
   test('AES.encryptText/decryptText round-trip (CTR)', () => {
-    const result = AES.encryptText('CTR Library Test!', 'CTRKey!!', 128, { mode: 'ctr' });
-    const dec = AES.decryptText(result.cipher, 'CTRKey!!', 128, { mode: 'ctr', nonceB64: result.nonce });
+    const result = AES.encryptText('CTR Library Test!', 'CTRKey!!12345678', 128, { mode: 'ctr' });
+    const dec = AES.decryptText(result.cipher, 'CTRKey!!12345678', 128, { mode: 'ctr', nonceB64: result.nonce });
     return dec === 'CTR Library Test!';
   });
 
   test('AES.encryptText/decryptText round-trip (CFB)', () => {
-    const result = AES.encryptText('CFB Library Test!', 'CFBKey!!', 128, { mode: 'cfb' });
-    const dec = AES.decryptText(result.cipher, 'CFBKey!!', 128, { mode: 'cfb', ivB64: result.iv });
+    const result = AES.encryptText('CFB Library Test!', 'CFBKey!!12345678', 128, { mode: 'cfb' });
+    const dec = AES.decryptText(result.cipher, 'CFBKey!!12345678', 128, { mode: 'cfb', ivB64: result.iv });
     return dec === 'CFB Library Test!';
   });
 
   test('AES.encryptText/decryptText round-trip (OFB)', () => {
-    const result = AES.encryptText('OFB Library Test!', 'OFBKey!!', 128, { mode: 'ofb' });
-    const dec = AES.decryptText(result.cipher, 'OFBKey!!', 128, { mode: 'ofb', ivB64: result.iv });
+    const result = AES.encryptText('OFB Library Test!', 'OFBKey!!12345678', 128, { mode: 'ofb' });
+    const dec = AES.decryptText(result.cipher, 'OFBKey!!12345678', 128, { mode: 'ofb', ivB64: result.iv });
     return dec === 'OFB Library Test!';
   });
 

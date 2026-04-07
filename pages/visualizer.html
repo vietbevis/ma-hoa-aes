@@ -876,6 +876,16 @@
                 maxlength="64"
                 placeholder="Nhập khóa..."
               />
+              <div
+                id="viz-key-error"
+                style="
+                  font-family: var(--font-mono);
+                  font-size: 10px;
+                  color: var(--red);
+                  margin-top: 4px;
+                  display: none;
+                "
+              ></div>
               <div class="fmt-group">
                 <button
                   class="fmt-btn active"
@@ -1096,7 +1106,7 @@
       // ════════════════════════════════════════════
       //  PARSE INPUT
       // ════════════════════════════════════════════
-      function parseInput(val, fmt, expectedLen) {
+      function parseInput(val, fmt, expectedLen, strictLen) {
         try {
           let bytes;
           if (fmt === "hex") {
@@ -1104,15 +1114,87 @@
           } else {
             bytes = AES.util.strToBytes(val);
           }
+          if (strictLen && bytes.length !== expectedLen) {
+            throw new Error(
+              `Khóa phải đúng ${expectedLen} bytes (hiện tại: ${bytes.length} bytes)`,
+            );
+          }
           // Pad or trim to expectedLen
           while (bytes.length < expectedLen) bytes.push(0);
           return bytes.slice(0, expectedLen);
         } catch (e) {
+          if (strictLen) throw e;
           let bytes = [];
           for (let i = 0; i < expectedLen; i++)
             bytes.push(val.charCodeAt(i) || 0);
           return bytes;
         }
+      }
+
+      function setVizKeyError(msg) {
+        const el = document.getElementById("viz-key-error");
+        if (!el) return;
+        if (!msg) {
+          el.textContent = "";
+          el.style.display = "none";
+          return;
+        }
+        el.textContent = msg;
+        el.style.display = "block";
+      }
+
+      function truncateToUtf8Bytes(text, maxBytes) {
+        if (!text) return "";
+        let out = "";
+        for (const ch of text) {
+          const next = out + ch;
+          if (AES.util.keyByteLength(next) > maxBytes) break;
+          out = next;
+        }
+        return out;
+      }
+
+      function applyVizKeyInputRules() {
+        const input = document.getElementById("viz-key");
+        if (!input) return;
+        const needed = keySize / 8;
+
+        if (fmtKey === "text") {
+          const truncated = truncateToUtf8Bytes(input.value, needed);
+          if (truncated !== input.value) input.value = truncated;
+          const actual = AES.util.keyByteLength(input.value);
+          if (actual === 0 || actual === needed) {
+            setVizKeyError("");
+            return;
+          }
+          setVizKeyError(
+            `Khóa AES-${keySize} cần đúng ${needed} bytes (hiện tại: ${actual} bytes)`,
+          );
+          return;
+        }
+
+        // HEX mode: giữ lại ký tự hex hợp lệ, cắt tối đa 2*needed nibbles
+        const clean = input.value
+          .replace(/\s/g, "")
+          .replace(/[^0-9a-fA-F]/g, "");
+        const truncatedHex = clean.slice(0, needed * 2).toUpperCase();
+        if (truncatedHex !== input.value) input.value = truncatedHex;
+        if (truncatedHex.length === 0) {
+          setVizKeyError("");
+          return;
+        }
+        if (truncatedHex.length % 2 !== 0) {
+          setVizKeyError("Khóa HEX phải có số ký tự chẵn");
+          return;
+        }
+        const actual = truncatedHex.length / 2;
+        if (actual === needed) {
+          setVizKeyError("");
+          return;
+        }
+        setVizKeyError(
+          `Khóa AES-${keySize} cần đúng ${needed} bytes (${needed * 2} ký tự hex)`,
+        );
       }
 
       // ════════════════════════════════════════════
@@ -1138,6 +1220,7 @@
             .getElementById("ks-" + k)
             .classList.toggle("active", parseInt(k) === s),
         );
+        applyVizKeyInputRules();
         runViz();
       }
 
@@ -1158,6 +1241,7 @@
           document
             .getElementById("fmt-key-hex")
             .classList.toggle("active", fmt === "hex");
+          applyVizKeyInputRules();
         }
       }
 
@@ -1649,23 +1733,37 @@
       function runViz() {
         stopPlay();
         const keyLen = keySize / 8;
-        const block = parseInput(
-          document.getElementById("viz-plain").value,
-          fmtPlain,
-          16,
-        );
-        const key = parseInput(
-          document.getElementById("viz-key").value,
-          fmtKey,
-          keyLen,
-        );
+        let block, key;
+        try {
+          block = parseInput(
+            document.getElementById("viz-plain").value,
+            fmtPlain,
+            16,
+          );
+          key = parseInput(
+            document.getElementById("viz-key").value,
+            fmtKey,
+            keyLen,
+            true,
+          );
+          keySchedule = AESCore.keyExpansion(key);
+          currentTrace =
+            traceMode === "enc"
+              ? AES.trace(block, key)
+              : AES.traceDec(block, key);
+        } catch (e) {
+          currentTrace = [];
+          setVizKeyError(e.message);
+          const title = document.getElementById("explain-title");
+          const text = document.getElementById("explain-text");
+          const formula = document.getElementById("explain-formula");
+          if (title) title.textContent = "⚠ Lỗi khóa";
+          if (text) text.textContent = e.message;
+          if (formula) formula.classList.add("hidden");
+          return;
+        }
 
-        keySchedule = AESCore.keyExpansion(key);
-
-        currentTrace =
-          traceMode === "enc"
-            ? AES.trace(block, key)
-            : AES.traceDec(block, key);
+        setVizKeyError("");
 
         buildSidebar();
         buildFlowOverview();
@@ -1708,6 +1806,10 @@
         if (window.lucide) {
           window.lucide.createIcons({ attrs: { "stroke-width": 2.2 } });
         }
+        document.getElementById("viz-key").addEventListener("input", () => {
+          applyVizKeyInputRules();
+        });
+        applyVizKeyInputRules();
         runViz();
       });
     </script>

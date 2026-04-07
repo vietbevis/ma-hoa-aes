@@ -10,6 +10,9 @@
  * Tất cả 5 mode (ECB, CBC, CFB, OFB, CTR) được cài đặt trong aes-core.js.
  * File này cung cấp: unified API, trace cho visualizer, mode info cho UI.
  * Không sử dụng bất kỳ hàm crypto/encode có sẵn nào.
+ * Tất cả 5 mode (ECB, CBC, CFB, OFB, CTR) được cài đặt trong aes-core.js.
+ * File này cung cấp: unified API, trace cho visualizer, mode info cho UI.
+ * Không sử dụng bất kỳ hàm crypto/encode có sẵn nào.
  *
  * Tác giả: Nguyễn Văn Việt, Trần Duy Quyến
  * Học viện Kỹ thuật Mật mã — Môn CSATBMTT
@@ -22,125 +25,6 @@
   // ── Tham chiếu tới core & utils
   const Core = window.AESCore;
   const U = window.Utils;
-
-  // ════════════════════════════════════════════
-  //  INTERNAL TRANSFORMS (cho trace / visualizer)
-  // ════════════════════════════════════════════
-
-  /**
-   * Chuyển 16 bytes → ma trận state 4×4 (column-major)
-   */
-  function bytesToState(block) {
-    const s = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
-    for (let r = 0; r < 4; r++)
-      for (let c = 0; c < 4; c++)
-        s[r][c] = block[r + 4 * c];
-    return s;
-  }
-
-  /**
-   * Chuyển ma trận state 4×4 → 16 bytes
-   */
-  function stateToBytes(state) {
-    const b = new Array(16);
-    for (let r = 0; r < 4; r++)
-      for (let c = 0; c < 4; c++)
-        b[r + 4 * c] = state[r][c];
-    return b;
-  }
-
-  /**
-   * SubBytes — thay thế qua S-Box
-   */
-  function subBytes(state) {
-    const SBOX = Core.SBOX;
-    return [
-      [SBOX[state[0][0]], SBOX[state[0][1]], SBOX[state[0][2]], SBOX[state[0][3]]],
-      [SBOX[state[1][0]], SBOX[state[1][1]], SBOX[state[1][2]], SBOX[state[1][3]]],
-      [SBOX[state[2][0]], SBOX[state[2][1]], SBOX[state[2][2]], SBOX[state[2][3]]],
-      [SBOX[state[3][0]], SBOX[state[3][1]], SBOX[state[3][2]], SBOX[state[3][3]]]
-    ];
-  }
-
-  /**
-   * InvSubBytes — thay thế qua Inverse S-Box
-   */
-  function invSubBytes(state) {
-    const INV = Core.INV_SBOX;
-    return [
-      [INV[state[0][0]], INV[state[0][1]], INV[state[0][2]], INV[state[0][3]]],
-      [INV[state[1][0]], INV[state[1][1]], INV[state[1][2]], INV[state[1][3]]],
-      [INV[state[2][0]], INV[state[2][1]], INV[state[2][2]], INV[state[2][3]]],
-      [INV[state[3][0]], INV[state[3][1]], INV[state[3][2]], INV[state[3][3]]]
-    ];
-  }
-
-  /**
-   * ShiftRows — dịch vòng trái các hàng
-   */
-  function shiftRows(state) {
-    return [
-      [state[0][0], state[0][1], state[0][2], state[0][3]],
-      [state[1][1], state[1][2], state[1][3], state[1][0]],
-      [state[2][2], state[2][3], state[2][0], state[2][1]],
-      [state[3][3], state[3][0], state[3][1], state[3][2]]
-    ];
-  }
-
-  /**
-   * InvShiftRows — dịch vòng phải (nghịch đảo)
-   */
-  function invShiftRows(state) {
-    return [
-      [state[0][0], state[0][1], state[0][2], state[0][3]],
-      [state[1][3], state[1][0], state[1][1], state[1][2]],
-      [state[2][2], state[2][3], state[2][0], state[2][1]],
-      [state[3][1], state[3][2], state[3][3], state[3][0]]
-    ];
-  }
-
-  /**
-   * MixColumns — nhân ma trận trong GF(2⁸)
-   */
-  function mixColumns(state) {
-    const g = Core.gmul;
-    const out = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
-    for (let c = 0; c < 4; c++) {
-      const s0 = state[0][c], s1 = state[1][c], s2 = state[2][c], s3 = state[3][c];
-      out[0][c] = g(2, s0) ^ g(3, s1) ^ s2 ^ s3;
-      out[1][c] = s0 ^ g(2, s1) ^ g(3, s2) ^ s3;
-      out[2][c] = s0 ^ s1 ^ g(2, s2) ^ g(3, s3);
-      out[3][c] = g(3, s0) ^ s1 ^ s2 ^ g(2, s3);
-    }
-    return out;
-  }
-
-  /**
-   * InvMixColumns — nghịch đảo MixColumns
-   */
-  function invMixColumns(state) {
-    const g = Core.gmul;
-    const out = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
-    for (let c = 0; c < 4; c++) {
-      const s0 = state[0][c], s1 = state[1][c], s2 = state[2][c], s3 = state[3][c];
-      out[0][c] = g(0x0e, s0) ^ g(0x0b, s1) ^ g(0x0d, s2) ^ g(0x09, s3);
-      out[1][c] = g(0x09, s0) ^ g(0x0e, s1) ^ g(0x0b, s2) ^ g(0x0d, s3);
-      out[2][c] = g(0x0d, s0) ^ g(0x09, s1) ^ g(0x0e, s2) ^ g(0x0b, s3);
-      out[3][c] = g(0x0b, s0) ^ g(0x0d, s1) ^ g(0x09, s2) ^ g(0x0e, s3);
-    }
-    return out;
-  }
-
-  /**
-   * AddRoundKey — XOR state với round key
-   */
-  function addRoundKey(state, w, round) {
-    const out = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
-    for (let c = 0; c < 4; c++)
-      for (let r = 0; r < 4; r++)
-        out[r][c] = state[r][c] ^ w[round * 4 + c][r];
-    return out;
-  }
 
   // ════════════════════════════════════════════
   //  UNIFIED ENCRYPT / DECRYPT API
@@ -241,6 +125,7 @@
 
     if (mode === 'ecb') {
       var cipher = Core.aesECBEncrypt(plainBytes, keyBytes);
+      var cipher = Core.aesECBEncrypt(plainBytes, keyBytes);
       result.cipher = U.toBase64(cipher);
     } else if (mode === 'cbc') {
       var iv = (opts && opts.iv) ? opts.iv : U.randomBytes(16);
@@ -250,15 +135,18 @@
     } else if (mode === 'cfb') {
       var iv = (opts && opts.iv) ? opts.iv : U.randomBytes(16);
       var cipher = Core.aesCFBEncrypt(plainBytes, keyBytes, iv);
+      var cipher = Core.aesCFBEncrypt(plainBytes, keyBytes, iv);
       result.cipher = U.toBase64(cipher);
       result.iv = U.toBase64(iv);
     } else if (mode === 'ofb') {
       var iv = (opts && opts.iv) ? opts.iv : U.randomBytes(16);
       var cipher = Core.aesOFBEncrypt(plainBytes, keyBytes, iv);
+      var cipher = Core.aesOFBEncrypt(plainBytes, keyBytes, iv);
       result.cipher = U.toBase64(cipher);
       result.iv = U.toBase64(iv);
     } else if (mode === 'ctr') {
       var nonce = (opts && opts.nonce) ? opts.nonce : U.randomBytes(8);
+      var cipher = Core.aesCTREncrypt(plainBytes, keyBytes, nonce);
       var cipher = Core.aesCTREncrypt(plainBytes, keyBytes, nonce);
       result.cipher = U.toBase64(cipher);
       result.nonce = U.toBase64(nonce);
@@ -285,6 +173,7 @@
 
     if (mode === 'ecb') {
       plainBytes = Core.aesECBDecrypt(cipherBytes, keyBytes);
+      plainBytes = Core.aesECBDecrypt(cipherBytes, keyBytes);
     } else if (mode === 'cbc') {
       var iv = opts && opts.ivB64 ? U.fromBase64(opts.ivB64) : null;
       if (!iv) throw new Error('CBC giải mã cần IV (Base64)');
@@ -293,13 +182,16 @@
       var iv = opts && opts.ivB64 ? U.fromBase64(opts.ivB64) : null;
       if (!iv) throw new Error('CFB giải mã cần IV (Base64)');
       plainBytes = Core.aesCFBDecrypt(cipherBytes, keyBytes, iv);
+      plainBytes = Core.aesCFBDecrypt(cipherBytes, keyBytes, iv);
     } else if (mode === 'ofb') {
       var iv = opts && opts.ivB64 ? U.fromBase64(opts.ivB64) : null;
       if (!iv) throw new Error('OFB giải mã cần IV (Base64)');
       plainBytes = Core.aesOFBDecrypt(cipherBytes, keyBytes, iv);
+      plainBytes = Core.aesOFBDecrypt(cipherBytes, keyBytes, iv);
     } else if (mode === 'ctr') {
       var nonce = opts && opts.nonceB64 ? U.fromBase64(opts.nonceB64) : null;
       if (!nonce) throw new Error('CTR giải mã cần Nonce (Base64)');
+      plainBytes = Core.aesCTRDecrypt(cipherBytes, keyBytes, nonce);
       plainBytes = Core.aesCTRDecrypt(cipherBytes, keyBytes, nonce);
     } else {
       throw new Error('Mode không hợp lệ: ' + mode);
@@ -323,6 +215,185 @@
   const AESF_MAGIC = [0x41, 0x45, 0x53, 0x46]; // "AESF"
   const AESF_MODE_MAP = { ecb: 0, cbc: 1, ctr: 2, cfb: 3, ofb: 4 };
   const AESF_MODE_NAMES = ['ecb', 'cbc', 'ctr', 'cfb', 'ofb'];
+
+  function appendBytes(target, source) {
+    for (let i = 0; i < source.length; i++) target.push(source[i]);
+  }
+
+  function buildAESFContainer(keyBits, ivOrNonce, filename, mimeType, cipherBytes, mode) {
+    const fnBytes = U.strToBytes(filename || 'encrypted.bin');
+    const mimeBytes = U.strToBytes(mimeType || 'application/octet-stream');
+    const out = [];
+
+    appendBytes(out, AESF_MAGIC);
+    out.push(0x00); // v2 marker
+    out.push(keyBits / 64);
+    out.push(AESF_MODE_MAP[mode] != null ? AESF_MODE_MAP[mode] : 1);
+
+    const ivPad = (ivOrNonce || []).slice(0, 16);
+    while (ivPad.length < 16) ivPad.push(0);
+    appendBytes(out, ivPad);
+
+    out.push(
+      (fnBytes.length >> 24) & 0xff,
+      (fnBytes.length >> 16) & 0xff,
+      (fnBytes.length >> 8) & 0xff,
+      fnBytes.length & 0xff,
+    );
+    appendBytes(out, fnBytes);
+
+    out.push(
+      (mimeBytes.length >> 24) & 0xff,
+      (mimeBytes.length >> 16) & 0xff,
+      (mimeBytes.length >> 8) & 0xff,
+      mimeBytes.length & 0xff,
+    );
+    appendBytes(out, mimeBytes);
+
+    appendBytes(out, cipherBytes);
+    return out;
+  }
+
+  function parseAESFContainer(bytes) {
+    const arr = Array.isArray(bytes) ? bytes : Array.from(bytes);
+    let pos = 0;
+
+    for (let i = 0; i < 4; i++) {
+      if (arr[pos++] !== AESF_MAGIC[i]) {
+        throw new Error('Không phải file .aes hợp lệ (magic mismatch)');
+      }
+    }
+
+    let keyBits, iv, mode;
+    if (arr[pos] === 0x00) {
+      pos++;
+      keyBits = arr[pos++] * 64;
+      mode = AESF_MODE_NAMES[arr[pos++]] || 'cbc';
+      iv = arr.slice(pos, pos + 16);
+      pos += 16;
+    } else {
+      // legacy v1: [keyBits/64][16 IV][...cipher], always CBC
+      keyBits = arr[pos++] * 64;
+      mode = 'cbc';
+      iv = arr.slice(pos, pos + 16);
+      pos += 16;
+    }
+
+    const fnLen =
+      (arr[pos] << 24) |
+      (arr[pos + 1] << 16) |
+      (arr[pos + 2] << 8) |
+      arr[pos + 3];
+    pos += 4;
+    const filename = U.bytesToStr(arr.slice(pos, pos + fnLen));
+    pos += fnLen;
+
+    const mimeLen =
+      (arr[pos] << 24) |
+      (arr[pos + 1] << 16) |
+      (arr[pos + 2] << 8) |
+      arr[pos + 3];
+    pos += 4;
+    const mimeType = U.bytesToStr(arr.slice(pos, pos + mimeLen));
+    pos += mimeLen;
+
+    const cipher = arr.slice(pos);
+    return { keyBits, iv, filename, mimeType, cipher, mode };
+  }
+
+  /**
+   * Mã hóa file bytes → AESF container bytes
+   *
+   * @param {Uint8Array|number[]} fileBytes
+   * @param {string} filename
+   * @param {string} mimeType
+   * @param {string} keyStr
+   * @param {number} keyBits 128/192/256
+   * @param {{mode?: string, iv?: number[], nonce?: number[]}} opts
+   */
+  function encryptFile(fileBytes, filename, mimeType, keyStr, keyBits, opts) {
+    const mode = (opts && opts.mode) ? opts.mode.toLowerCase() : 'cbc';
+    const data = Array.isArray(fileBytes) ? fileBytes : Array.from(fileBytes);
+    const keyBytes = U.prepareKey(keyStr, keyBits);
+
+    let ivOrNonce;
+    if (mode === 'ecb') {
+      ivOrNonce = new Array(16).fill(0);
+    } else if (mode === 'ctr') {
+      ivOrNonce = (opts && opts.nonce) ? opts.nonce.slice(0, 8) : U.randomBytes(8);
+    } else {
+      ivOrNonce = (opts && opts.iv) ? opts.iv.slice(0, 16) : U.randomBytes(16);
+    }
+
+    const aesOpts = { mode };
+    if (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') aesOpts.iv = ivOrNonce;
+    if (mode === 'ctr') aesOpts.nonce = ivOrNonce;
+
+    const cipherBytes = encrypt(data, keyBytes, aesOpts);
+    const container = buildAESFContainer(keyBits, ivOrNonce, filename, mimeType, cipherBytes, mode);
+    return {
+      container,
+      cipherBytes,
+      outName: (filename || 'encrypted.bin') + '.aes',
+      keyHex: U.toHex(keyBytes),
+      keyBits,
+      mode,
+      iv: (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') ? ivOrNonce : null,
+      nonce: (mode === 'ctr') ? ivOrNonce : null
+    };
+  }
+
+  /**
+   * Giải mã AESF container bytes → file bytes
+   *
+   * @param {Uint8Array|number[]} containerBytes
+   * @param {string} keyStr
+   * @param {number} keyBitsOverride 128/192/256 (UI chọn); nếu null sẽ dùng embedded keyBits
+   * @param {{iv?: number[], nonce?: number[]}} opts
+   */
+  function decryptFile(containerBytes, keyStr, keyBitsOverride, opts) {
+    const raw = Array.isArray(containerBytes) ? containerBytes : Array.from(containerBytes);
+    const parsed = parseAESFContainer(raw);
+
+    const mode = (parsed.mode || 'cbc').toLowerCase();
+    const keyBits = keyBitsOverride || parsed.keyBits || 128;
+    const keyBytes = U.prepareKey(keyStr, keyBits);
+
+    let ivOrNonce = parsed.iv;
+    if (mode === 'ctr' && opts && opts.nonce) ivOrNonce = opts.nonce.slice(0, 8);
+    if ((mode === 'cbc' || mode === 'cfb' || mode === 'ofb') && opts && opts.iv) ivOrNonce = opts.iv.slice(0, 16);
+
+    const aesOpts = { mode };
+    if (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') aesOpts.iv = ivOrNonce;
+    if (mode === 'ctr') aesOpts.nonce = ivOrNonce.slice(0, 8);
+
+    const plainBytes = decrypt(parsed.cipher, keyBytes, aesOpts);
+    return {
+      plainBytes,
+      filename: parsed.filename || 'decrypted.bin',
+      mimeType: parsed.mimeType || 'application/octet-stream',
+      mode,
+      embeddedKeyBits: parsed.keyBits,
+      keyBitsUsed: keyBits,
+      cipherBytesLength: parsed.cipher.length,
+      iv: (mode === 'cbc' || mode === 'cfb' || mode === 'ofb') ? ivOrNonce : null,
+      nonce: (mode === 'ctr') ? ivOrNonce.slice(0, 8) : null
+    };
+  }
+
+  // ════════════════════════════════════════════
+  //  FILE ENCRYPT / DECRYPT (AESF CONTAINER)
+  // ════════════════════════════════════════════
+
+  // AESF container format (v2):
+  //  [4 bytes: magic "AESF"]
+  //  [1 byte: 0x00 marker (v2)]
+  //  [1 byte: keyBits/64 → 2/3/4]
+  //  [1 byte: mode id (0=ECB,1=CBC,2=CTR,3=CFB,4=OFB)]
+  //  [16 bytes: IV/Nonce padded to 16 bytes]
+  //  [4 bytes: filename length] [N bytes: filename UTF-8]
+  //  [4 bytes: mime length]     [M bytes: mime UTF-8]
+  //  [rest: ciphertext bytes]
 
   function appendBytes(target, source) {
     for (let i = 0; i < source.length; i++) target.push(source[i]);
@@ -515,29 +586,29 @@
       });
     }
 
-    var state = bytesToState(block);
+    var state = Core.bytesToState(block);
     capture(state, 0, 'Initial State', 'none');
 
-    state = addRoundKey(state, w, 0);
+    state = Core.addRoundKey(state, w, 0);
     capture(state, 0, 'AddRoundKey[0]', 'ark');
 
     for (var round = 1; round < Nr; round++) {
-      state = subBytes(state);
+      state = Core.subBytes(state);
       capture(state, round, 'R' + round + ': SubBytes', 'sub');
-      state = shiftRows(state);
+      state = Core.shiftRows(state);
       capture(state, round, 'R' + round + ': ShiftRows', 'shift');
-      state = mixColumns(state);
+      state = Core.mixColumns(state);
       capture(state, round, 'R' + round + ': MixColumns', 'mix');
-      state = addRoundKey(state, w, round);
+      state = Core.addRoundKey(state, w, round);
       capture(state, round, 'R' + round + ': AddRoundKey', 'ark');
     }
 
     // Vòng cuối
-    state = subBytes(state);
+    state = Core.subBytes(state);
     capture(state, Nr, 'R' + Nr + ': SubBytes', 'sub');
-    state = shiftRows(state);
+    state = Core.shiftRows(state);
     capture(state, Nr, 'R' + Nr + ': ShiftRows (Final)', 'shift');
-    state = addRoundKey(state, w, Nr);
+    state = Core.addRoundKey(state, w, Nr);
     capture(state, Nr, 'R' + Nr + ': AddRoundKey (Output)', 'ark');
 
     return steps;
@@ -564,29 +635,29 @@
       });
     }
 
-    var state = bytesToState(block);
+    var state = Core.bytesToState(block);
     capture(state, Nr, 'Initial Ciphertext', 'none');
 
-    state = addRoundKey(state, w, Nr);
+    state = Core.addRoundKey(state, w, Nr);
     capture(state, Nr, 'AddRoundKey[' + Nr + ']', 'ark');
 
     for (var round = Nr - 1; round >= 1; round--) {
-      state = invShiftRows(state);
+      state = Core.invShiftRows(state);
       capture(state, round, 'R' + round + ': InvShiftRows', 'shift');
-      state = invSubBytes(state);
+      state = Core.invSubBytes(state);
       capture(state, round, 'R' + round + ': InvSubBytes', 'sub');
-      state = addRoundKey(state, w, round);
+      state = Core.addRoundKey(state, w, round);
       capture(state, round, 'R' + round + ': AddRoundKey', 'ark');
-      state = invMixColumns(state);
+      state = Core.invMixColumns(state);
       capture(state, round, 'R' + round + ': InvMixColumns', 'mix');
     }
 
     // Vòng cuối
-    state = invShiftRows(state);
+    state = Core.invShiftRows(state);
     capture(state, 0, 'R0: InvShiftRows', 'shift');
-    state = invSubBytes(state);
+    state = Core.invSubBytes(state);
     capture(state, 0, 'R0: InvSubBytes', 'sub');
-    state = addRoundKey(state, w, 0);
+    state = Core.addRoundKey(state, w, 0);
     capture(state, 0, 'R0: AddRoundKey (Output)', 'ark');
 
     return steps;
@@ -672,8 +743,21 @@
     // ── Low-level mode functions (tất cả từ aes-core.js)
     ecbEncrypt: Core.aesECBEncrypt,
     ecbDecrypt: Core.aesECBDecrypt,
+    // ── File API (AESF container)
+    encryptFile: encryptFile,
+    decryptFile: decryptFile,
+
+    // ── Low-level mode functions (tất cả từ aes-core.js)
+    ecbEncrypt: Core.aesECBEncrypt,
+    ecbDecrypt: Core.aesECBDecrypt,
     cbcEncrypt: Core.aesCBCEncrypt,
     cbcDecrypt: Core.aesCBCDecrypt,
+    cfbEncrypt: Core.aesCFBEncrypt,
+    cfbDecrypt: Core.aesCFBDecrypt,
+    ofbEncrypt: Core.aesOFBEncrypt,
+    ofbDecrypt: Core.aesOFBDecrypt,
+    ctrEncrypt: Core.aesCTREncrypt,
+    ctrDecrypt: Core.aesCTRDecrypt,
     cfbEncrypt: Core.aesCFBEncrypt,
     cfbDecrypt: Core.aesCFBDecrypt,
     ofbEncrypt: Core.aesOFBEncrypt,
@@ -688,19 +772,22 @@
 
     // ── Internal transforms (cho visualizer)
     internal: {
-      bytesToState: bytesToState,
-      stateToBytes: stateToBytes,
-      subBytes: subBytes,
-      invSubBytes: invSubBytes,
-      shiftRows: shiftRows,
-      invShiftRows: invShiftRows,
-      mixColumns: mixColumns,
-      invMixColumns: invMixColumns,
-      addRoundKey: addRoundKey,
+      bytesToState: Core.bytesToState,
+      stateToBytes: Core.stateToBytes,
+      subBytes: Core.subBytes,
+      invSubBytes: Core.invSubBytes,
+      shiftRows: Core.shiftRows,
+      invShiftRows: Core.invShiftRows,
+      mixColumns: Core.mixColumns,
+      invMixColumns: Core.invMixColumns,
+      addRoundKey: Core.addRoundKey,
       keyExpansion: Core.keyExpansion,
       SBOX: Core.SBOX,
       INV_SBOX: Core.INV_SBOX,
       gmul: Core.gmul,
+      pkcs7Pad: Core.pkcs7Pad,
+      pkcs7Unpad: Core.pkcs7Unpad,
+      incrementCounter: Core.incrementCounter,
       pkcs7Pad: Core.pkcs7Pad,
       pkcs7Unpad: Core.pkcs7Unpad,
       incrementCounter: Core.incrementCounter
@@ -719,6 +806,8 @@
       toHex: U.toHex,
       fromHex: U.fromHex,
       randomBytes: U.randomBytes,
+      keyByteLength: U.keyByteLength,
+      validateKeyLength: U.validateKeyLength,
       prepareKey: U.prepareKey,
       validateInputs: U.validateInputs,
       formatHexDump: U.formatHexDump

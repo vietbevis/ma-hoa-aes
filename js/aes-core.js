@@ -632,5 +632,14 @@ window.AESCore = {
   incrementCounter,
   SBOX,
   INV_SBOX,
-  gmul
+  gmul,
+  subBytes,
+  invSubBytes,
+  bytesToState,
+  stateToBytes,
+  shiftRows,
+  invShiftRows,
+  mixColumns,
+  invMixColumns,
+  addRoundKey
 };

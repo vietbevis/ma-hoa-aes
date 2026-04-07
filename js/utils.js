@@ -67,14 +67,14 @@ function bytesToStr(bytes) {
     if ((b0 & 0x80) === 0) {
       codePoint = b0; i += 1;
     } else if ((b0 & 0xE0) === 0xC0) {
-      codePoint = ((b0 & 0x1F) << 6) | (bytes[i+1] & 0x3F);
+      codePoint = ((b0 & 0x1F) << 6) | (bytes[i + 1] & 0x3F);
       i += 2;
     } else if ((b0 & 0xF0) === 0xE0) {
-      codePoint = ((b0 & 0x0F) << 12) | ((bytes[i+1] & 0x3F) << 6) | (bytes[i+2] & 0x3F);
+      codePoint = ((b0 & 0x0F) << 12) | ((bytes[i + 1] & 0x3F) << 6) | (bytes[i + 2] & 0x3F);
       i += 3;
     } else {
-      codePoint = ((b0 & 0x07) << 18) | ((bytes[i+1] & 0x3F) << 12) |
-                  ((bytes[i+2] & 0x3F) << 6) | (bytes[i+3] & 0x3F);
+      codePoint = ((b0 & 0x07) << 18) | ((bytes[i + 1] & 0x3F) << 12) |
+        ((bytes[i + 2] & 0x3F) << 6) | (bytes[i + 3] & 0x3F);
       i += 4;
     }
 
@@ -130,7 +130,7 @@ function fromBase64(b64) {
   const len = clean.length;
 
   for (let i = 0; i < len; i += 4) {
-    const c0 = _B64_LOOKUP[clean[i]]     ?? 0;
+    const c0 = _B64_LOOKUP[clean[i]] ?? 0;
     const c1 = _B64_LOOKUP[clean[i + 1]] ?? 0;
     const c2 = _B64_LOOKUP[clean[i + 2]] ?? 0;
     const c3 = _B64_LOOKUP[clean[i + 3]] ?? 0;
@@ -164,8 +164,8 @@ function fromHex(hex) {
   if (clean.length % 2 !== 0) throw new Error('Hex string phải có độ dài chẵn');
   const bytes = [];
   for (let i = 0; i < clean.length; i += 2) {
-    const val = parseInt(clean[i] + clean[i+1], 16);
-    if (isNaN(val)) throw new Error(`Ký tự hex không hợp lệ: ${clean[i]}${clean[i+1]}`);
+    const val = parseInt(clean[i] + clean[i + 1], 16);
+    if (isNaN(val)) throw new Error(`Ký tự hex không hợp lệ: ${clean[i]}${clean[i + 1]}`);
     bytes.push(val);
   }
   return bytes;
@@ -206,18 +206,46 @@ function randomBytes(n) {
 // ─────────────────────────────────────────────
 
 /**
+ * Trả về số bytes UTF-8 của chuỗi
+ * @param {string} str
+ * @returns {number}
+ */
+function keyByteLength(str) {
+  return strToBytes(str || '').length;
+}
+
+/**
+ * Validate độ dài khóa theo chuẩn AES
+ * @param {string} keyStr  - chuỗi khóa nhập vào
+ * @param {number} keyBits - 128, 192, hoặc 256
+ * @returns {{ needed: number, actual: number }}
+ */
+function validateKeyLength(keyStr, keyBits) {
+  if (![128, 192, 256].includes(keyBits)) {
+    throw new Error('Kích thước khóa không hợp lệ (chỉ hỗ trợ 128/192/256 bit)');
+  }
+
+  const needed = keyBits / 8;
+  const actual = keyByteLength(keyStr);
+  if (actual !== needed) {
+    throw new Error(
+      `Khóa phải đúng ${needed} bytes cho AES-${keyBits} (hiện tại: ${actual} bytes)`
+    );
+  }
+  return { needed, actual };
+}
+
+/**
  * Chuẩn bị khóa từ chuỗi text sang mảng bytes đúng kích thước
- * Pad bằng 0x00 nếu thiếu, cắt nếu thừa
+ * Bắt buộc đúng độ dài, không tự pad/cắt
  * @param {string} keyStr  - chuỗi khóa nhập vào
  * @param {number} keyBits - 128, 192, hoặc 256
  * @returns {number[]}
  */
 function prepareKey(keyStr, keyBits) {
-  const needed = keyBits / 8;
-  let bytes = strToBytes(keyStr);
-  // Pad bằng zeros nếu thiếu
-  while (bytes.length < needed) bytes.push(0);
-  return bytes.slice(0, needed);
+  const check = validateKeyLength(keyStr, keyBits);
+  const bytes = strToBytes(keyStr);
+  return bytes.slice(0, check.needed);
 }
 
 /**
@@ -228,6 +256,13 @@ function validateInputs({ key, keyBits, plaintext, iv, mode }) {
   const errors = [];
   if (!key || key.trim() === '') errors.push('Khóa bí mật không được để trống');
   if (![128, 192, 256].includes(keyBits)) errors.push('Kích thước khóa không hợp lệ');
+  if (key && [128, 192, 256].includes(keyBits)) {
+    const needed = keyBits / 8;
+    const actual = keyByteLength(key);
+    if (actual !== needed) {
+      errors.push(`Khóa phải đúng ${needed} bytes cho AES-${keyBits} (hiện tại: ${actual} bytes)`);
+    }
+  }
   if (mode === 'encrypt' && (!plaintext || plaintext.trim() === ''))
     errors.push('Văn bản cần mã hóa không được để trống');
   if (mode === 'decrypt' && (!plaintext || plaintext.trim() === ''))
@@ -247,7 +282,7 @@ function formatHexDump(bytes, groupSize = 16) {
   for (let i = 0; i < bytes.length; i += groupSize) {
     const chunk = bytes.slice(i, i + groupSize);
     const offset = i.toString(16).padStart(4, '0').toUpperCase();
-    const hex = chunk.map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+    const hex = chunk.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
     lines.push(`${offset}  ${hex.padEnd(groupSize * 3 - 1)}`);
   }
   return lines.join('\n');
@@ -262,6 +297,8 @@ window.Utils = {
   toHex,
   fromHex,
   randomBytes,
+  keyByteLength,
+  validateKeyLength,
   prepareKey,
   validateInputs,
   formatHexDump

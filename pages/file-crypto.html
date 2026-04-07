@@ -634,8 +634,13 @@
                   <input
                     type="text"
                     id="enc-key"
-                    placeholder="Nhập mật khẩu để mã hóa file..."
+                    placeholder="Nhập mật khẩu đúng độ dài AES đã chọn"
                   />
+                  <div
+                    id="enc-key-error"
+                    class="hint"
+                    style="color: var(--red); display: none; margin-top: 6px"
+                  ></div>
                 </div>
 
                 <div class="field" id="enc-iv-field">
@@ -835,8 +840,13 @@
                   <input
                     type="text"
                     id="dec-key"
-                    placeholder="Nhập mật khẩu đã dùng khi mã hóa..."
+                    placeholder="Nhập đúng mật khẩu đã dùng khi mã hóa"
                   />
+                  <div
+                    id="dec-key-error"
+                    class="hint"
+                    style="color: var(--red); display: none; margin-top: 6px"
+                  ></div>
                 </div>
 
                 <div class="field">
@@ -1031,6 +1041,88 @@
         el.innerHTML = `<div class="status-dot"></div><span>${msg}</span>`;
       }
 
+      function getKeyLengthError(keyStr, keyBits) {
+        try {
+          Utils.validateKeyLength(keyStr, keyBits);
+          return null;
+        } catch (e) {
+          return e.message;
+        }
+      }
+
+      function truncateToUtf8Bytes(text, maxBytes) {
+        if (!text) return "";
+        let out = "";
+        for (const ch of text) {
+          const next = out + ch;
+          if (Utils.keyByteLength(next) > maxBytes) break;
+          out = next;
+        }
+        return out;
+      }
+
+      function setKeyInlineError(field, msg) {
+        const id = field === "enc" ? "enc-key-error" : "dec-key-error";
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (!msg) {
+          el.textContent = "";
+          el.style.display = "none";
+          return;
+        }
+        el.textContent = msg;
+        el.style.display = "block";
+      }
+
+      function maybeClearStatusWhenKeyValid(field) {
+        const statusId = field === "enc" ? "enc-status" : "dec-status";
+        const el = document.getElementById(statusId);
+        if (!el || !el.classList.contains("err")) return;
+        if (field === "enc") {
+          setSt(
+            statusId,
+            "",
+            encFileData
+              ? `File sẵn sàng: ${encFileData.name} (${fmtSize(encFileData.size)})`
+              : "Chưa có file",
+          );
+        } else {
+          setSt(
+            statusId,
+            "",
+            decFileData
+              ? `File sẵn sàng: ${decFileData.name} (${fmtSize(decFileData.size)})`
+              : "Chưa có file",
+          );
+        }
+      }
+
+      function applyKeyInputRules(field) {
+        const isEnc = field === "enc";
+        const input = document.getElementById(isEnc ? "enc-key" : "dec-key");
+        if (!input) return;
+
+        const keyBits = isEnc ? encKeyBits : decKeyBits;
+        const needed = keyBits / 8;
+        const truncated = truncateToUtf8Bytes(input.value, needed);
+        if (truncated !== input.value) input.value = truncated;
+
+        const actual = Utils.keyByteLength(input.value);
+        if (actual === 0) {
+          setKeyInlineError(field, "");
+          return;
+        }
+        if (actual === needed) {
+          setKeyInlineError(field, "");
+          maybeClearStatusWhenKeyValid(field);
+          return;
+        }
+        setKeyInlineError(
+          field,
+          `Khóa AES-${keyBits} cần đúng ${needed} bytes (hiện tại: ${actual} bytes)`,
+        );
+      }
+
       // ── Set stats
       function setStats(sizeStr, blocks, ms, outSize) {
         document.getElementById("st-size").textContent = sizeStr || "—";
@@ -1104,6 +1196,13 @@
           setSt("enc-status", "err", "⚠ Vui lòng nhập khóa");
           return;
         }
+        const keyErr = getKeyLengthError(keyStr, encKeyBits);
+        if (keyErr) {
+          setKeyInlineError("enc", keyErr);
+          setSt("enc-status", "err", "⚠ " + keyErr);
+          return;
+        }
+        setKeyInlineError("enc", "");
 
         const btn = document.getElementById("enc-btn");
         btn.disabled = true;
@@ -1237,6 +1336,13 @@
           setSt("dec-status", "err", "⚠ Vui lòng nhập khóa");
           return;
         }
+        const keyErr = getKeyLengthError(keyStr, decKeyBits);
+        if (keyErr) {
+          setKeyInlineError("dec", keyErr);
+          setSt("dec-status", "err", "⚠ " + keyErr);
+          return;
+        }
+        setKeyInlineError("dec", "");
 
         const btn = document.getElementById("dec-btn");
         btn.disabled = true;
@@ -1517,6 +1623,7 @@
         document.getElementById("enc-result-area").innerHTML =
           `<div style="padding:32px 0;text-align:center;color:var(--text-muted);font-family:var(--font-mono);font-size:12px">— Chọn file và nhập khóa để bắt đầu —</div>`;
         document.getElementById("enc-btn").disabled = true;
+        setKeyInlineError("enc", "");
         setSt("enc-status", "", "Chưa có file");
         setStats(null, null, null, null);
       }
@@ -1529,7 +1636,17 @@
         document.getElementById("dec-result-area").innerHTML =
           `<div style="padding:32px 0;text-align:center;color:var(--text-muted);font-family:var(--font-mono);font-size:12px">— Chọn file .aes và nhập khóa để giải mã —</div>`;
         document.getElementById("dec-btn").disabled = true;
+        setKeyInlineError("dec", "");
         setSt("dec-status", "", "Chưa có file");
+      }
+
+      function updateKeyPlaceholders() {
+        const encNeeded = encKeyBits / 8;
+        const decNeeded = decKeyBits / 8;
+        document.getElementById("enc-key").placeholder =
+          `Nhập mật khẩu đúng ${encNeeded} bytes cho AES-${encKeyBits}`;
+        document.getElementById("dec-key").placeholder =
+          `Nhập khóa đúng ${decNeeded} bytes cho AES-${decKeyBits}`;
       }
 
       // ── Key size
@@ -1539,6 +1656,8 @@
           document.getElementById(id).classList.remove("active"),
         );
         document.getElementById("enc-k" + bits).classList.add("active");
+        updateKeyPlaceholders();
+        applyKeyInputRules("enc");
       }
       function setDKS(bits) {
         decKeyBits = bits;
@@ -1546,6 +1665,8 @@
           document.getElementById(id).classList.remove("active"),
         );
         document.getElementById("dec-k" + bits).classList.add("active");
+        updateKeyPlaceholders();
+        applyKeyInputRules("dec");
       }
 
       // ── Cipher mode (encrypt)
@@ -1674,6 +1795,13 @@
         null,
         "dec-btn",
       );
+      document
+        .getElementById("enc-key")
+        .addEventListener("input", () => applyKeyInputRules("enc"));
+      document
+        .getElementById("dec-key")
+        .addEventListener("input", () => applyKeyInputRules("dec"));
+      updateKeyPlaceholders();
 
       // ── Initial entropy (empty)
       drawEntropy([], "entropy-canvas");

@@ -104,7 +104,7 @@
           <div class="field-label">
             Kích thước khóa
             <span class="field-hint" id="enc-key-hint"
-              >(16 ký tự / 128 bit)</span
+              >(16 bytes / 128 bit)</span
             >
           </div>
           <div class="key-size-row" id="panel-enc">
@@ -121,8 +121,13 @@
           <input
             type="text"
             id="enc-key"
-            placeholder="Nhập khóa bí mật... (tự động pad/truncate đúng độ dài)"
+            placeholder="Nhập khóa bí mật đúng độ dài theo AES đã chọn"
           />
+          <div
+            class="field-hint"
+            id="enc-key-error"
+            style="color: var(--red); display: none; margin-top: 6px"
+          ></div>
         </div>
         <div class="field" id="enc-iv-field">
           <div class="field-label">
@@ -219,6 +224,11 @@
             id="dec-key"
             placeholder="Nhập đúng khóa đã dùng khi mã hóa..."
           />
+          <div
+            class="field-hint"
+            id="dec-key-error"
+            style="color: var(--red); display: none; margin-top: 6px"
+          ></div>
         </div>
         <div class="field" id="dec-iv-field">
           <div class="field-label">
@@ -546,9 +556,9 @@
           decMode = "cbc";
         const roundsMap = { 128: 10, 192: 12, 256: 14 };
         const keyHints = {
-          128: "(16 ký tự / 128 bit)",
-          192: "(24 ký tự / 192 bit)",
-          256: "(32 ký tự / 256 bit)",
+          128: "(16 bytes / 128 bit)",
+          192: "(24 bytes / 192 bit)",
+          256: "(32 bytes / 256 bit)",
         };
 
         // ── Key size selector helper
@@ -569,9 +579,11 @@
           encKeyBits = bits;
           const hint = document.getElementById("enc-key-hint");
           if (hint) hint.textContent = keyHints[bits];
+          applyKeyInputRules("enc");
         });
         setupKeySelector("panel-dec", (bits) => {
           decKeyBits = bits;
+          applyKeyInputRules("dec");
         });
 
         // ── Mode selector helper
@@ -659,6 +671,13 @@
           updateDecModeUI();
         });
 
+        document.getElementById("enc-key").addEventListener("input", () => {
+          applyKeyInputRules("enc");
+        });
+        document.getElementById("dec-key").addEventListener("input", () => {
+          applyKeyInputRules("dec");
+        });
+
         // ── Tab switching
         document.querySelectorAll(".tab-btn").forEach((btn) => {
           btn.addEventListener("click", () => {
@@ -703,6 +722,81 @@
           el.classList.add("has-value");
         }
 
+        function getKeyLengthError(keyStr, keyBits) {
+          try {
+            Utils.validateKeyLength(keyStr, keyBits);
+            return null;
+          } catch (e) {
+            return e.message;
+          }
+        }
+
+        function truncateToUtf8Bytes(text, maxBytes) {
+          if (!text) return "";
+          let out = "";
+          for (const ch of text) {
+            const next = out + ch;
+            if (Utils.keyByteLength(next) > maxBytes) break;
+            out = next;
+          }
+          return out;
+        }
+
+        function setKeyInlineError(field, msg) {
+          const id = field === "enc" ? "enc-key-error" : "dec-key-error";
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (!msg) {
+            el.textContent = "";
+            el.style.display = "none";
+            return;
+          }
+          el.textContent = msg;
+          el.style.display = "block";
+        }
+
+        function maybeClearStatusWhenKeyValid(field, isValid) {
+          if (!isValid) return;
+          const statusId = field === "enc" ? "status-enc" : "status-dec";
+          const el = document.getElementById(statusId);
+          if (!el || !el.classList.contains("error")) return;
+          setStatus(
+            statusId,
+            "",
+            field === "enc"
+              ? "Sẵn sàng — Nhập khóa và văn bản rồi bấm Mã hóa"
+              : "Sẵn sàng — Nhập khóa, IV, ciphertext rồi bấm Giải mã",
+          );
+        }
+
+        function applyKeyInputRules(field) {
+          const isEnc = field === "enc";
+          const input = document.getElementById(isEnc ? "enc-key" : "dec-key");
+          if (!input) return;
+
+          const keyBits = isEnc ? encKeyBits : decKeyBits;
+          const needed = keyBits / 8;
+          const truncated = truncateToUtf8Bytes(input.value, needed);
+          if (truncated !== input.value) input.value = truncated;
+
+          const actual = Utils.keyByteLength(input.value);
+          if (actual === 0) {
+            setKeyInlineError(field, "");
+            return;
+          }
+
+          if (actual === needed) {
+            setKeyInlineError(field, "");
+            maybeClearStatusWhenKeyValid(field, true);
+            return;
+          }
+
+          setKeyInlineError(
+            field,
+            `Khóa AES-${keyBits} cần đúng ${needed} bytes (hiện tại: ${actual} bytes)`,
+          );
+        }
+
         // ── History
         function addHistory(action, detail) {
           const list = document.getElementById("history-list");
@@ -732,6 +826,13 @@
             setStatus("status-enc", "error", "⚠ Vui lòng nhập khóa bí mật");
             return;
           }
+          const keyErr = getKeyLengthError(keyStr, encKeyBits);
+          if (keyErr) {
+            setKeyInlineError("enc", keyErr);
+            setStatus("status-enc", "error", "⚠ " + keyErr);
+            return;
+          }
+          setKeyInlineError("enc", "");
           if (!plain) {
             setStatus("status-enc", "error", "⚠ Vui lòng nhập văn bản");
             return;
@@ -824,6 +925,13 @@
             setStatus("status-dec", "error", "⚠ Vui lòng nhập khóa");
             return;
           }
+          const keyErr = getKeyLengthError(keyStr, decKeyBits);
+          if (keyErr) {
+            setKeyInlineError("dec", keyErr);
+            setStatus("status-dec", "error", "⚠ " + keyErr);
+            return;
+          }
+          setKeyInlineError("dec", "");
           if (decMode !== "ecb" && !ivB64) {
             setStatus(
               "status-dec",
@@ -937,6 +1045,7 @@
             );
             if (match) match.classList.add("selected");
             decKeyBits = encKeyBits;
+            applyKeyInputRules("dec");
 
             // Sync mode
             document
@@ -968,6 +1077,7 @@
               "",
               "Sẵn sàng — Nhập khóa và văn bản rồi bấm Mã hóa",
             );
+            setKeyInlineError("enc", "");
           });
 
         document
@@ -985,6 +1095,7 @@
               "",
               "Sẵn sàng — Nhập khóa, IV, ciphertext rồi bấm Giải mã",
             );
+            setKeyInlineError("dec", "");
           });
       })();
     </script>

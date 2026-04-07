@@ -325,12 +325,17 @@
 
                 <div class="field">
                   <div class="field-label">Khóa bí mật (Secret Key)</div>
-                  <input
-                    type="text"
-                    id="enc-key"
-                    placeholder="Nhập khóa..."
-                    oninput="updateKeyDisplay()"
-                  />
+                  <input type="text" id="enc-key" placeholder="Nhập khóa..." />
+                  <div
+                    id="enc-key-error"
+                    style="
+                      font-family: var(--font-mono);
+                      font-size: 10px;
+                      color: var(--red);
+                      margin-top: 4px;
+                      display: none;
+                    "
+                  ></div>
                   <div id="enc-key-bytes" class="key-display"></div>
                   <div
                     style="
@@ -341,7 +346,7 @@
                     "
                     id="enc-key-info"
                   >
-                    AES-128: cần 16 bytes (pad/cắt tự động)
+                    AES-128: phải đúng 16 bytes
                   </div>
                 </div>
 
@@ -530,6 +535,16 @@
                     id="dec-key"
                     placeholder="Nhập khóa bí mật..."
                   />
+                  <div
+                    id="dec-key-error"
+                    style="
+                      font-family: var(--font-mono);
+                      font-size: 10px;
+                      color: var(--red);
+                      margin-top: 4px;
+                      display: none;
+                    "
+                  ></div>
                 </div>
 
                 <div class="field" id="dec-iv-field">
@@ -696,7 +711,8 @@
         document.getElementById("info-algo").textContent =
           "AES-" + bits + "-" + encMode.toUpperCase();
         document.getElementById("enc-key-info").textContent =
-          "AES-" + bits + ": cần " + bits / 8 + " bytes (pad/cắt tự động)";
+          "AES-" + bits + ": phải đúng " + bits / 8 + " bytes";
+        applyKeyInputRules("enc");
         updateKeyDisplay();
       }
 
@@ -706,12 +722,17 @@
           document.getElementById(id).classList.remove("active"),
         );
         document.getElementById("dec-k" + bits).classList.add("active");
+        applyKeyInputRules("dec");
       }
 
       function updateKeyDisplay() {
         const keyStr = document.getElementById("enc-key").value;
-        const bytes = Utils.prepareKey(keyStr, encKeyBits);
         const disp = document.getElementById("enc-key-bytes");
+        if (!keyStr) {
+          disp.innerHTML = "";
+          return;
+        }
+        const bytes = Utils.strToBytes(keyStr);
         disp.innerHTML = bytes
           .map(
             (b) =>
@@ -721,6 +742,83 @@
           )
           .join("");
       }
+
+      function getKeyLengthError(keyStr, keyBits) {
+        try {
+          Utils.validateKeyLength(keyStr, keyBits);
+          return null;
+        } catch (e) {
+          return e.message;
+        }
+      }
+
+      function truncateToUtf8Bytes(text, maxBytes) {
+        if (!text) return "";
+        let out = "";
+        for (const ch of text) {
+          const next = out + ch;
+          if (Utils.keyByteLength(next) > maxBytes) break;
+          out = next;
+        }
+        return out;
+      }
+
+      function setKeyInlineError(field, msg) {
+        const id = field === "enc" ? "enc-key-error" : "dec-key-error";
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (!msg) {
+          el.textContent = "";
+          el.style.display = "none";
+          return;
+        }
+        el.textContent = msg;
+        el.style.display = "block";
+      }
+
+      function maybeClearStatusWhenKeyValid(field) {
+        const statusId = field === "enc" ? "enc-status" : "dec-status";
+        const statusEl = document.getElementById(statusId);
+        if (!statusEl || !statusEl.classList.contains("err")) return;
+        setStatus(statusId, "", "Sẵn sàng");
+      }
+
+      function applyKeyInputRules(field) {
+        const isEnc = field === "enc";
+        const input = document.getElementById(isEnc ? "enc-key" : "dec-key");
+        if (!input) return;
+
+        const keyBits = isEnc ? encKeyBits : decKeyBits;
+        const needed = keyBits / 8;
+        const truncated = truncateToUtf8Bytes(input.value, needed);
+        if (truncated !== input.value) input.value = truncated;
+
+        const actual = Utils.keyByteLength(input.value);
+        if (actual === 0) {
+          setKeyInlineError(field, "");
+          if (isEnc) updateKeyDisplay();
+          return;
+        }
+
+        if (actual === needed) {
+          setKeyInlineError(field, "");
+          maybeClearStatusWhenKeyValid(field);
+        } else {
+          setKeyInlineError(
+            field,
+            `Khóa AES-${keyBits} cần đúng ${needed} bytes (hiện tại: ${actual} bytes)`,
+          );
+        }
+
+        if (isEnc) updateKeyDisplay();
+      }
+
+      document
+        .getElementById("enc-key")
+        .addEventListener("input", () => applyKeyInputRules("enc"));
+      document
+        .getElementById("dec-key")
+        .addEventListener("input", () => applyKeyInputRules("dec"));
 
       function switchTab(tab) {
         document
@@ -790,6 +888,7 @@
         ["enc-key", "enc-iv", "enc-input"].forEach(
           (id) => (document.getElementById(id).value = ""),
         );
+        setKeyInlineError("enc", "");
         document.getElementById("enc-key-bytes").innerHTML = "";
         document.getElementById("enc-output").innerHTML =
           '<span style="color:var(--text-dim)">—</span>';
@@ -811,6 +910,7 @@
         ["dec-key", "dec-iv", "dec-input"].forEach(
           (id) => (document.getElementById(id).value = ""),
         );
+        setKeyInlineError("dec", "");
         document.getElementById("dec-output").innerHTML =
           '<span style="color:var(--text-dim)">—</span>';
         setStatus("dec-status", "", "Sẵn sàng");
@@ -825,6 +925,13 @@
           setStatus("enc-status", "err", "⚠ Vui lòng nhập khóa bí mật");
           return;
         }
+        const keyErr = getKeyLengthError(keyStr, encKeyBits);
+        if (keyErr) {
+          setKeyInlineError("enc", keyErr);
+          setStatus("enc-status", "err", "⚠ " + keyErr);
+          return;
+        }
+        setKeyInlineError("enc", "");
         if (!plain) {
           setStatus("enc-status", "err", "⚠ Vui lòng nhập văn bản");
           return;
@@ -922,6 +1029,13 @@
           setStatus("dec-status", "err", "⚠ Vui lòng nhập khóa bí mật");
           return;
         }
+        const keyErr = getKeyLengthError(keyStr, decKeyBits);
+        if (keyErr) {
+          setKeyInlineError("dec", keyErr);
+          setStatus("dec-status", "err", "⚠ " + keyErr);
+          return;
+        }
+        setKeyInlineError("dec", "");
         if (decMode !== "ecb" && !ivB64) {
           setStatus(
             "dec-status",
@@ -993,6 +1107,7 @@
         document.getElementById("enc-input").value =
           "Hello, World! This is a test of AES encryption.";
         setEncKeySize(128);
+        applyKeyInputRules("enc");
         setEncMode("cbc");
         switchTab("enc");
       }
@@ -1002,6 +1117,7 @@
         document.getElementById("enc-input").value =
           "Xin chào! Đây là thử nghiệm mã hóa AES với tiếng Việt. 🔐";
         setEncKeySize(128);
+        applyKeyInputRules("enc");
         setEncMode("cbc");
         switchTab("enc");
       }
@@ -1010,6 +1126,7 @@
         document.getElementById("enc-input").value = "Two One Nine Two";
         document.getElementById("enc-iv").value = "AAAAAAAAAAAAAAAA";
         setEncKeySize(128);
+        applyKeyInputRules("enc");
         setEncMode("cbc");
         switchTab("enc");
       }
